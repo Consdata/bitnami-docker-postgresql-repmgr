@@ -44,46 +44,31 @@ is_hostname_resolved() {
 }
 
 ########################
-# Check that node_address can be IPv6 format
-# Arguments:
-#   $1 - node_address - String
-# Returns:
-#   Boolean
-#########################
-canBeIPv6() {
-	[[ $(echo $1  | grep -o ':' | wc -l) -ge 2 ]]
-}
-
-########################
-# Extract host and port from address
+# Parse URL
 # Globals:
 #   None
 # Arguments:
-#   $1 - node_address - String
-#   $2 - default_port - Integer
+#   $1 - url - String
+#   $2 - field to obtain. Valid options (protocol, hostname, or port) - String
 # Returns:
-#   Array - (host port)
-#########################
-extractHostAndPort() {
-	local node_address=$1
-	local default_port=$2
-	local extracted_host=$node_address;
-	local extracted_port=$default_port;
+#   String
+parse_url() {
+	local url=$1
+	local field_to_obtain=$2
 
-	if canBeIPv6 $node_address; then
-		if [[ $node_address =~ ^\[[^\]]+\]:[0-9]+$ ]]; then
-			extracted_host="${node_address%']'*}"
-			extracted_host="${extracted_host##*'['}"
-
-			extracted_port=$([[ "$node_address" = *']:'* ]] && echo "${node_address##*']:'}" || echo "$default_port")
-			extracted_port=${extracted_port:-default_port}
-		fi
-	else
-		extracted_host="${node_address%:*}"
-
-		extracted_port=$([[ "$node_address" = *':'* ]] && echo "${node_address##*':'}" || echo "$default_port")
-		extracted_port=${extracted_port:-default_port}
+	if [[ "$field_to_obtain" == "protocol" ]]; then
+	  local extracted_protocol=$([[ "$url" = *'://'* ]] && echo "${url%://*}" || echo '')
+	  echo "$extracted_protocol"
 	fi
-	echo $extracted_host
-	echo $extracted_port
+	if [[ "$field_to_obtain" == "hostname" ]]; then
+    local extracted_hostname="${url##*'://'}"
+    extracted_hostname="${extracted_hostname%:*}"
+	  echo "$extracted_hostname"
+	fi
+	if [[ "$field_to_obtain" == "port" ]]; then
+	  local extracted_port="${url##*'://'}"
+	  extracted_port=$([[ "$extracted_port" = *':'* ]] && echo "${extracted_port##*':'}" || echo "$default_port")
+	  echo "$extracted_port"
+	fi
+  echo ''
 }
