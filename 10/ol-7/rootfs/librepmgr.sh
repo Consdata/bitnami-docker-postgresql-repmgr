@@ -193,6 +193,8 @@ repmgr_get_upstream_node() {
         repmgr_info "Querying all partner nodes for common upstream node..."
         read -r -a nodes <<< "$(tr ',;' ' ' <<< "${REPMGR_PARTNER_NODES}")"
         for node in "${nodes[@]}"; do
+            # intentionally accept inncorect address (without [schema:]// )
+            [[ "$node" =~ ^(([^:/?#]+):)?// ]] || node="tcp://${node}"
             local host=$(parse_uri "$node" 'host')
             local port=$(parse_uri "$node" 'port')
             port=${port:-$REPMGR_PRIMARY_PORT}
