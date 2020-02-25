@@ -193,8 +193,8 @@ repmgr_get_upstream_node() {
         repmgr_info "Querying all partner nodes for common upstream node..."
         read -r -a nodes <<< "$(tr ',;' ' ' <<< "${REPMGR_PARTNER_NODES}")"
         for node in "${nodes[@]}"; do
-            local host=$(parse_url "$node" 'hostname')
-            local port=$(parse_url "$node" 'port')
+            local host=$(parse_uri "$node" 'hostname')
+            local port=$(parse_uri "$node" 'port')
             port=${port:-$REPMGR_PRIMARY_PORT}
             repmgr_debug "Checking node $host,$port..."
             local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
