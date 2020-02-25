@@ -95,7 +95,7 @@ parse_uri() {
             index=14
             ;;
         *)
-            stderr_print "unrecognized component $1"
+            stderr_print "unrecognized component $component"
             return 1
             ;;
     esac
