@@ -63,9 +63,9 @@ parse_uri() {
     # additional sub-expressions to split authority into userinfo, host and port
     # Credits to Patryk Obara (see https://stackoverflow.com/a/45977232/6694969)
     local -r URI_REGEX='^(([^:/?#]+):)?(//((([^@/?#]+)@)?([^:/?#]+)(:([0-9]+))?))?(/([^?#]*))?(\?([^#]*))?(#(.*))?'
-    #                    ||            |  |||            |         | |            | |        |  |        | |
-    #                    |2 scheme     |  ||6 userinfo   7 host    | 9 port       | 11 rpath |  13 query | 15 fragment
-    #                    1 scheme:     |  |5 userinfo@             8 :...         10 path    12 ?...     14 #...
+    #                    ||            |  |||            |         | |            | |         |  |        | |
+    #                    |2 scheme     |  ||6 userinfo   7 host    | 9 port       | 11 rpath  |  13 query | 15 fragment
+    #                    1 scheme:     |  |5 userinfo@             8 :...         10 path     12 ?...     14 #...
     #                                  |  4 authority
     #                                  3 //...
     local index=0
