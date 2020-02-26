@@ -198,10 +198,10 @@ repmgr_get_upstream_node() {
             local host=$(parse_uri "$node" 'host')
             local port=$(parse_uri "$node" 'port')
             port=${port:-$REPMGR_PRIMARY_PORT}
-            repmgr_debug "Checking node $host,$port..."
+            repmgr_debug "Checking node $host:$port..."
             local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
             if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$host" "$port" "-tA")"; then
-                repmgr_debug "Skipping: failed to get primary from the node $host,$port!"
+                repmgr_debug "Skipping: failed to get primary from the node $host:$port!"
                 continue
             elif [[ -z "$primary_conninfo" ]]; then
                 repmgr_debug "Skipping: failed to get information about primary nodes!"
@@ -221,7 +221,7 @@ repmgr_get_upstream_node() {
                     pretending_primary_port="$suggested_primary_port"
                 fi
             else
-                repmgr_warn "There were more than one primary when getting primary from node $host,$port"
+                repmgr_warn "There were more than one primary when getting primary from node $host:$port"
                 pretending_primary_host="" && pretending_primary_port="" && break
             fi
         done
@@ -511,11 +511,11 @@ repmgr_wait_primary_node() {
     local -i max_tries=$(( timeout / step ))
     local schemata
     repmgr_info "Waiting for primary node..."
-    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on $REPMGR_CURRENT_PRIMARY_HOST,$REPMGR_CURRENT_PRIMARY_PORT, will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
+    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on $REPMGR_CURRENT_PRIMARY_HOST:$REPMGR_CURRENT_PRIMARY_PORT, will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
     for ((i = 0 ; i <= timeout ; i+=step )); do
         local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
         if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "-tA")"; then
-            repmgr_debug "Host $REPMGR_CURRENT_PRIMARY_HOST,$REPMGR_CURRENT_PRIMARY_PORT is not accessible"
+            repmgr_debug "Host $REPMGR_CURRENT_PRIMARY_HOST:$REPMGR_CURRENT_PRIMARY_PORT is not accessible"
         else
             if [[ $schemata -ne 1 ]]; then
                 repmgr_debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
@@ -640,7 +640,7 @@ repmgr_upgrade_extension() {
 #   None
 #########################
 repmgr_initialize() {
-    repmgr_debug "Node ID: $(repmgr_get_node_id), Rol: $REPMGR_ROLE, Primary Node: $REPMGR_CURRENT_PRIMARY_HOST,$REPMGR_CURRENT_PRIMARY_PORT"
+    repmgr_debug "Node ID: $(repmgr_get_node_id), Rol: $REPMGR_ROLE, Primary Node: $REPMGR_CURRENT_PRIMARY_HOST:$REPMGR_CURRENT_PRIMARY_PORT"
     repmgr_info "Initializing Repmgr..."
 
     if [[ "$REPMGR_ROLE" = "standby" ]]; then
