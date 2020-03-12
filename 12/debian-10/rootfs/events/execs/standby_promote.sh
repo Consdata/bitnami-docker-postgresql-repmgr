@@ -10,3 +10,5 @@ set -o pipefail
 . "$REPMGR_EVENTS_DIR/execs/includes/anotate_event_processing.sh"
 . "$REPMGR_EVENTS_DIR/execs/includes/lock_primary.sh"
 . "$REPMGR_EVENTS_DIR/execs/includes/unlock_standby.sh"
+
+rm -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
