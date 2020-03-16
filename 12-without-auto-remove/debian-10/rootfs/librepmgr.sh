@@ -83,6 +83,8 @@ export REPMGR_SWITCH_ROLE="${REPMGR_SWITCH_ROLE:-no}"
 export REPMGR_CURRENT_PRIMARY_HOST=""
 export REPMGR_CURRENT_PRIMARY_PORT="${REPMGR_PRIMARY_PORT}"
 export STANDBY_ALREADY_CLONED_FILENAME=".standbyAlreadyCloned"
+export BECOME_MASTER_FILENAME=".becomeMaster"
+export FORCE_UNSAFE_CLONE_FILENAME=".forceUnsafeClone"
 
 
 # Aliases to setup PostgreSQL environment variables
@@ -544,10 +546,17 @@ repmgr_wait_primary_node() {
 #########################
 repmgr_clone_primary() {
     repmgr_info "Cloning data from primary node..."
-    local -r flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint" "--force")
+    local flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint")
+
+    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
+      rm "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" || exit $?
+      flags+=( "--force" )
+      repmgr_info "USE FORCE FLAG IN CLONE!!!"
+    fi
 
     PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-    date --rfc-3339=seconds > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
+    date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
+    rm -f "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}"
 }
 
 ########################
@@ -560,13 +569,11 @@ repmgr_clone_primary() {
 #   None
 #########################
 repmgr_rewind() {
-    repmgr_info "Rejoining node..."
-
-    repmgr_debug "Deleting old data..."
-    rm -rf "$POSTGRESQL_DATA_DIR" && ensure_dir_exists "$POSTGRESQL_DATA_DIR"
-
-    repmgr_debug "Cloning data from primary node..."
-    repmgr_clone_primary
+    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
+      repmgr_info "Rejoining node..."
+      repmgr_debug "Cloning data from primary node with force flag..."
+      repmgr_clone_primary
+    fi
 }
 
 ########################
@@ -647,6 +654,11 @@ repmgr_initialize() {
     repmgr_debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}'"
     repmgr_info "Initializing Repmgr..."
 
+    if [[ -f "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}" ]]; then
+      repmgr_error "Detect file '${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}'. Manual action to resolve problem is needed!"
+      exit 135
+    fi
+
     if [[ "$REPMGR_ROLE" = "standby" ]]; then
         repmgr_wait_primary_node || exit 1
         # TODO: better way to detect it's a 1st boot
@@ -655,7 +667,7 @@ repmgr_initialize() {
               repmgr_clone_primary
             fi
         else
-            repmgr_rewind
+            repmgr_rewind || exit $?
         fi
     fi
     postgresql_initialize
@@ -683,6 +695,7 @@ repmgr_initialize() {
             repmgr_debug "Skipping repmgr configuration..."
         fi
         rm -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
+        date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}"
     else
         (( POSTGRESQL_MAJOR_VERSION >= 12 )) && postgresql_configure_recovery
         postgresql_start_bg
