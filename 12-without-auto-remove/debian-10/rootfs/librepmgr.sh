@@ -82,6 +82,8 @@ export REPMGR_UPGRADE_EXTENSION="${REPMGR_UPGRADE_EXTENSION:-no}"
 export REPMGR_SWITCH_ROLE="${REPMGR_SWITCH_ROLE:-no}"
 export REPMGR_CURRENT_PRIMARY_HOST=""
 export REPMGR_CURRENT_PRIMARY_PORT="${REPMGR_PRIMARY_PORT}"
+export STANDBY_ALREADY_CLONED_FILENAME=".standbyAlreadyCloned"
+
 
 # Aliases to setup PostgreSQL environment variables
 export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
@@ -545,6 +547,8 @@ repmgr_clone_primary() {
     local -r flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint" "--force")
 
     PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+    echo "3"
+    date --rfc-3339=seconds > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
 }
 
 ########################
@@ -648,10 +652,13 @@ repmgr_initialize() {
         repmgr_wait_primary_node || exit 1
         # TODO: better way to detect it's a 1st boot
         if [[ ! -f "$POSTGRESQL_CONF_FILE" ]] || ! is_boolean_yes "$REPMGR_SWITCH_ROLE"; then
-            repmgr_clone_primary
+            echo "2"
+            if [[ ! -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}" ]]; then
+              repmgr_clone_primary
+            fi
         else
             repmgr_rewind
-      fi
+        fi
     fi
     postgresql_initialize
     # Allow remote connections, required to register primary and standby nodes
@@ -677,6 +684,8 @@ repmgr_initialize() {
         else
             repmgr_debug "Skipping repmgr configuration..."
         fi
+        echo "1"
+        rm -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
     else
         (( POSTGRESQL_MAJOR_VERSION >= 12 )) && postgresql_configure_recovery
         postgresql_start_bg
