@@ -12,3 +12,4 @@ set -o pipefail
 . "$REPMGR_EVENTS_DIR/execs/includes/unlock_standby.sh"
 
 rm -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
+date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}"
