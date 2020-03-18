@@ -670,6 +670,12 @@ repmgr_initialize() {
             repmgr_rewind || exit $?
         fi
     fi
+
+    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
+      repmgr_warn "File ${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME} still exists, so we delete it for the safety reason."
+      rm "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}"
+    fi
+
     postgresql_initialize
     # Allow remote connections, required to register primary and standby nodes
     postgresql_enable_remote_connections
