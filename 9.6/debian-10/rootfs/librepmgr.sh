@@ -491,6 +491,7 @@ log_level='${REPMGR_LOG_LEVEL}'
 priority='${REPMGR_NODE_PRIORITY}'
 degraded_monitoring_timeout='${REPMGR_DEGRADED_MONITORING_TIMEOUT}'
 data_directory='${POSTGRESQL_DATA_DIR}'
+pg_ctl_options='-l $POSTGRESQL_LOG_FILE -o --config-file="$POSTGRESQL_CONF_FILE --external_pid_file=$POSTGRESQL_PID_FILE --hba_file=$POSTGRESQL_PGHBA_FILE"'
 async_query_timeout='${REPMGR_MASTER_RESPONSE_TIMEOUT}'
 EOF
     fi
