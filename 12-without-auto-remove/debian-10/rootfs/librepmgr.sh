@@ -309,6 +309,8 @@ repmgr_set_role() {
 
     if [[ -z "$primary_host" ]]; then
         repmgr_info "There are no nodes with primary role. Assuming the primary role..."
+        primary_host="${REPMGR_PRIMARY_HOST}"
+        primary_port="${REPMGR_PRIMARY_PORT}"
         role="primary"
     fi
 
