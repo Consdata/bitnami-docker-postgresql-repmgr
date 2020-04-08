@@ -22,9 +22,6 @@ eval "$(postgresql_env)"
 repmgr_validate
 postgresql_validate
 
-# Set the environment variables for the node's role
-eval "$(repmgr_set_role)"
-
 # Ensure PostgreSQL is stopped when this script ends.
 trap "postgresql_stop" EXIT
 # Ensure 'daemon' user exists when running as 'root'
