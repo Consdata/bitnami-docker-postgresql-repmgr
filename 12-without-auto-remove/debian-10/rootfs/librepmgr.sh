@@ -709,6 +709,22 @@ repmgr_upgrade_extension() {
 }
 
 ########################
+# Check if that node was primary before
+# Arguments:
+#   None
+# Returns:
+#   Boolean
+#########################
+was_primary_before() {
+    repmgr_info "Checking node status..."
+    local -r flags=("node" "status" "--csv" "-f" "$REPMGR_CONF_FILE")
+    local response=$(debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}")
+
+    repmgr_debug "Check node status return: $(echo "$response" | grep 'Role')"
+    [[ $(echo "$response" | grep -c -E 'Role.*primary') -gt 0 ]] && true || false
+}
+
+########################
 # Initialize repmgr service
 # Globals:
 #   REPMGR_*
@@ -794,8 +810,14 @@ repmgr_initialize() {
     else
         (( POSTGRESQL_MAJOR_VERSION >= 12 )) && postgresql_configure_recovery
         postgresql_start_bg
+
+        local WAS_PRIMARY_BEFORE
+        was_primary_before && WAS_PRIMARY_BEFORE="true" || WAS_PRIMARY_BEFORE="false"
+
         repmgr_unregister_standby
         repmgr_register_standby
-        repmgr_follow_primary
+        if [[ "$WAS_PRIMARY_BEFORE" = "true" ]]; then
+          repmgr_follow_primary
+        fi
     fi
 }
