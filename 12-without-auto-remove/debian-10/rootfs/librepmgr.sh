@@ -54,6 +54,7 @@ export REPMGR_PID_FILE="${REPMGR_TMP_DIR}/repmgr.pid"
 export PATH="${REPMGR_BIN_DIR}:$PATH"
 
 # Settings
+export REPMGR_NODE_TYPE="${REPMGR_NODE_TYPE:-database}"
 export REPMGR_NODE_ID="${REPMGR_NODE_ID:-}"
 export REPMGR_NODE_NAME="${REPMGR_NODE_NAME:-$(hostname)}"
 export REPMGR_NODE_NETWORK_NAME="${REPMGR_NODE_NETWORK_NAME:-}"
@@ -67,7 +68,8 @@ export REPMGR_CONNECT_TIMEOUT="${REPMGR_CONNECT_TIMEOUT:-5}"
 export REPMGR_RECONNECT_ATTEMPTS="${REPMGR_RECONNECT_ATTEMPTS:-3}"
 export REPMGR_RECONNECT_INTERVAL="${REPMGR_RECONNECT_INTERVAL:-5}"
 
-export REPMGR_PARTNER_NODES="${REPMGR_PARTNER_NODES:-}"
+export REPMGR_WITNESS_NODE="${REPMGR_WITNESS_NODE:-}"
+export REPMGR_WITNESS_PORT="${REPMGR_WITNESS_PORT:-5432}"
 export REPMGR_PRIMARY_HOST="${REPMGR_PRIMARY_HOST:-}"
 export REPMGR_PRIMARY_PORT="${REPMGR_PRIMARY_PORT:-5432}"
 
@@ -83,7 +85,7 @@ export REPMGR_SWITCH_ROLE="${REPMGR_SWITCH_ROLE:-no}"
 export REPMGR_CURRENT_PRIMARY_HOST=""
 export REPMGR_CURRENT_PRIMARY_PORT="${REPMGR_PRIMARY_PORT}"
 export STANDBY_ALREADY_CLONED_FILENAME=".standbyAlreadyCloned"
-export BECOME_MASTER_FILENAME=".becomeMaster"
+export WITNESS_ALREADY_STARTED_FILENAME=".witnessAlreadyStarted"
 export FORCE_UNSAFE_CLONE_FILENAME=".forceUnsafeClone"
 
 
@@ -147,8 +149,8 @@ repmgr_validate() {
         error_code=1
     }
 
-    if [[ -z "$REPMGR_PARTNER_NODES" ]]; then
-        print_validation_error "The list of partner nodes cannot be empty. Set the environment variable REPMGR_PARTNER_NODES with a comma separated list of partner nodes."
+    if [[ -z "$REPMGR_WITNESS_NODE" && "$REPMGR_NODE_TYPE" != "witness" ]]; then
+        print_validation_error "The witness cannot be empty. Set the environment variable REPMGR_WITNESS_NODE with a witness node host (You can also change default port (5432) changing REPMGR_WITNESS_PORT)."
     fi
     if [[ -z "$REPMGR_PRIMARY_HOST" ]]; then
         print_validation_error "The initial primary host is required. Set the environment variable REPMGR_PRIMARY_HOST with the initial primary host."
@@ -196,42 +198,34 @@ repmgr_get_upstream_node() {
     local port=""
 
 
-    if [[ -n "$REPMGR_PARTNER_NODES" ]]; then
-        repmgr_info "Querying all partner nodes for common upstream node..."
-        read -r -a nodes <<< "$(tr ',;' ' ' <<< "${REPMGR_PARTNER_NODES}")"
-        for node in "${nodes[@]}"; do
-            # intentionally accept inncorect address (without [schema:]// )
-            [[ "$node" =~ ^(([^:/?#]+):)?// ]] || node="tcp://${node}"
-            host="$(parse_uri "$node" 'host')"
-            port="$(parse_uri "$node" 'port')"
-            port="${port:-$REPMGR_PRIMARY_PORT}"
-            repmgr_debug "Checking node '$host:$port'..."
-            local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
-            if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$host" "$port" "-tA")"; then
-                repmgr_debug "Skipping: failed to get primary from the node '$host:$port'!"
-                continue
-            elif [[ -z "$primary_conninfo" ]]; then
-                repmgr_debug "Skipping: failed to get information about primary nodes!"
-                continue
-            elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
-                local -r suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
-                local -r suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
-                repmgr_debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
-                if [[ -n "$pretending_primary_host" ]]; then
-                    if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
-                        repmgr_warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
-                        pretending_primary_host="" && pretending_primary_port="" && break
-                    fi
-                else
-                    repmgr_debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
-                    pretending_primary_host="$suggested_primary_host"
-                    pretending_primary_port="$suggested_primary_port"
+    if [[ -n "$REPMGR_WITNESS_NODE" ]]; then
+        repmgr_info "Searching primary node using witness..."
+        host="$REPMGR_WITNESS_NODE"
+        port="${REPMGR_WITNESS_PORT:-5432}"
+        repmgr_debug "Checking witness '$host:$port'..."
+        local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
+        if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$host" "$port" "-tA")"; then
+            repmgr_debug "Skipping: failed to get primary from the node '$host:$port'!"
+        elif [[ -z "$primary_conninfo" ]]; then
+            repmgr_debug "Skipping: failed to get information about primary nodes!"
+        elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
+            local -r suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
+            local -r suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
+            repmgr_debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
+            if [[ -n "$pretending_primary_host" ]]; then
+                if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
+                    repmgr_warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
+                    pretending_primary_host="" && pretending_primary_port="" && break
                 fi
             else
-                repmgr_warn "There were more than one primary when getting primary from node '$host:$port'"
-                pretending_primary_host="" && pretending_primary_port="" && break
+                repmgr_debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
+                pretending_primary_host="$suggested_primary_host"
+                pretending_primary_port="$suggested_primary_port"
             fi
-        done
+        else
+            repmgr_warn "There were more than one primary when getting primary from node '$host:$port'"
+            pretending_primary_host="" && pretending_primary_port="" && break
+        fi
     fi
 
     echo "$pretending_primary_host"
@@ -299,18 +293,23 @@ repmgr_get_primary_node() {
 #########################
 repmgr_set_role() {
     local role="standby"
-    local primary_node
-    local primary_host
-    local primary_port
+    local primary_host=""
+    local primary_port=""
 
-    readarray -t primary_node < <(repmgr_get_primary_node)
-    primary_host=${primary_node[0]}
-    primary_port=${primary_node[1]:-$REPMGR_PRIMARY_PORT}
+    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+        local primary_node
+        readarray -t primary_node < <(repmgr_get_primary_node)
+        primary_host=${primary_node[0]}
+        primary_port=${primary_node[1]:-$REPMGR_PRIMARY_PORT}
+    fi
 
     if [[ -z "$primary_host" ]]; then
-        repmgr_info "There are no nodes with primary role. Assuming the primary role..."
+        repmgr_info "There are no nodes with primary role. Assuming the primary role ($REPMGR_PRIMARY_HOST:$REPMGR_PRIMARY_PORT)..."
         primary_host="${REPMGR_PRIMARY_HOST}"
         primary_port="${REPMGR_PRIMARY_PORT}"
+    fi
+
+    if [[ "$REPMGR_NODE_TYPE" != "witness" && "$primary_host" = "$REPMGR_NODE_NETWORK_NAME" && "$primary_port" = "$REPMGR_PORT_NUMBER" ]]; then
         role="primary"
     fi
 
@@ -538,6 +537,40 @@ repmgr_wait_primary_node() {
 }
 
 ########################
+# Waits until the witness node responds
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_wait_witness_node() {
+    local return_value=1
+    local -i timeout=60
+    local -i step=10
+    local -i max_tries=$(( timeout / step ))
+    local schemata
+    repmgr_info "Waiting for witness node..."
+    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on '${REPMGR_WITNESS_NODE}:${REPMGR_WITNESS_PORT}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
+    for ((i = 0 ; i <= timeout ; i+=step )); do
+        local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
+        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_WITNESS_NODE" "$REPMGR_WITNESS_PORT" "-tA")"; then
+            repmgr_debug "Host '${REPMGR_WITNESS_NODE}:${REPMGR_WITNESS_PORT}' is not accessible"
+        else
+            if [[ $schemata -ne 1 ]]; then
+                repmgr_debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
+            else
+                repmgr_debug "Schema $REPMGR_DATABASE.repmgr exists!"
+                return_value=0 && break
+            fi
+        fi
+        sleep "$step"
+    done
+    return $return_value
+}
+
+########################
 # Clones data from primary node
 # Globals:
 #   REPMGR_*
@@ -559,7 +592,6 @@ repmgr_clone_primary() {
 
     PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
     date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
-    rm -f "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}"
 }
 
 ########################
@@ -614,7 +646,7 @@ repmgr_unregister_standby() {
 }
 
 ########################
-# Resgister a node as standby
+# Register a node as standby
 # Globals:
 #   REPMGR_*
 # Arguments:
@@ -627,6 +659,38 @@ repmgr_register_standby() {
     local -r flags=("standby" "register" "-f" "$REPMGR_CONF_FILE" "--force" "--verbose")
 
     debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+}
+
+########################
+# Follow a primary node
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_follow_primary() {
+    repmgr_info "Following primary node..."
+    local -r flags=("standby" "follow" "-f" "$REPMGR_CONF_FILE" "--force" "--verbose")
+
+    PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+}
+
+########################
+# Register a node as witness
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_register_witness() {
+    repmgr_info "Registering Witness node..."
+    local -r flags=("witness" "register" "-f" "$REPMGR_CONF_FILE" "--host" "$REPMGR_CURRENT_PRIMARY_HOST" "--port" "$REPMGR_CURRENT_PRIMARY_PORT" "--force" "--verbose")
+
+    PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
 }
 
 ########################
@@ -654,19 +718,29 @@ repmgr_upgrade_extension() {
 #   None
 #########################
 repmgr_initialize() {
+    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+        if [[ -d "$POSTGRESQL_DATA_DIR" ]] && ! is_dir_empty "$POSTGRESQL_DATA_DIR" || [[ "$REPMGR_PRIMARY_HOST" != "$REPMGR_NODE_NETWORK_NAME" || "$REPMGR_PRIMARY_PORT" != "$REPMGR_PORT_NUMBER" ]]; then
+          repmgr_wait_witness_node || exit 1
+        fi
+    fi
+
+    # Set the environment variables for the node's role
+    eval "$(repmgr_set_role)"
+
+    # Configure postgres
+    export POSTGRESQL_MASTER_HOST="$REPMGR_CURRENT_PRIMARY_HOST"
+    export POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
+    export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
+    export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
+
     repmgr_debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}'"
     repmgr_info "Initializing Repmgr..."
 
-    if [[ -f "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}" ]]; then
-      repmgr_error "Detect file '${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}'. Manual action to resolve problem is needed!"
-      exit 135
-    fi
-
-    if [[ "$REPMGR_ROLE" = "standby" ]]; then
+    if [[ "$REPMGR_ROLE" = "standby" && "$REPMGR_NODE_TYPE" != "witness" ]]; then
         repmgr_wait_primary_node || exit 1
         # TODO: better way to detect it's a 1st boot
         if [[ ! -f "$POSTGRESQL_CONF_FILE" ]] || ! is_boolean_yes "$REPMGR_SWITCH_ROLE"; then
-            if [[ ! -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}" ]]; then
+            if [[ ! -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}" || -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
               repmgr_clone_primary
             fi
         else
@@ -685,7 +759,20 @@ repmgr_initialize() {
     # Configure port and restrict access to PostgreSQL (MD5)
     postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
     is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
-    if [[ "$REPMGR_ROLE" = "primary" ]]; then
+
+    if [[ "$REPMGR_NODE_TYPE" = "witness" ]]; then
+      if [[ ! -f "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME" ]]; then
+            repmgr_wait_primary_node || exit 1
+            postgresql_start_bg
+            repmgr_create_repmgr_user
+            repmgr_create_repmgr_db
+            # Restart PostgreSQL
+            postgresql_stop
+            postgresql_start_bg
+            repmgr_register_witness
+            date --rfc-3339=ns > "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME"
+      fi
+    elif [[ "$REPMGR_ROLE" = "primary" ]]; then
         if is_boolean_yes "$POSTGRESQL_FIRST_BOOT"; then
             postgresql_start_bg
             repmgr_create_repmgr_user
@@ -703,12 +790,12 @@ repmgr_initialize() {
         else
             repmgr_debug "Skipping repmgr configuration..."
         fi
-        rm -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
-        date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${BECOME_MASTER_FILENAME}"
+        date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
     else
         (( POSTGRESQL_MAJOR_VERSION >= 12 )) && postgresql_configure_recovery
         postgresql_start_bg
         repmgr_unregister_standby
         repmgr_register_standby
+        repmgr_follow_primary
     fi
 }
