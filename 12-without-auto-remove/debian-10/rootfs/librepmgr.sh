@@ -215,7 +215,7 @@ repmgr_get_upstream_node() {
             if [[ -n "$pretending_primary_host" ]]; then
                 if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
                     repmgr_warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
-                    pretending_primary_host="" && pretending_primary_port="" && break
+                    pretending_primary_host="" && pretending_primary_port=""
                 fi
             else
                 repmgr_debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
@@ -224,7 +224,7 @@ repmgr_get_upstream_node() {
             fi
         else
             repmgr_warn "There were more than one primary when getting primary from node '$host:$port'"
-            pretending_primary_host="" && pretending_primary_port="" && break
+            pretending_primary_host="" && pretending_primary_port=""
         fi
     fi
 
@@ -718,10 +718,11 @@ repmgr_upgrade_extension() {
 was_primary_before() {
     repmgr_info "Checking node status..."
     local -r flags=("node" "status" "--csv" "-f" "$REPMGR_CONF_FILE")
-    local response=$(debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}")
+    local response
+    response=$(debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}")
 
-    repmgr_debug "Check node status return: $(echo "$response" | grep 'Role')"
-    [[ $(echo "$response" | grep -c -E 'Role.*primary') -gt 0 ]] && true || false
+    repmgr_debug "Check node status return role: $(echo "$response" | grep 'Role')"
+    [[ $(echo "$response" | grep -c -E 'Role.*primary') -gt 0 ]] && echo 'yes' || echo 'no'
 }
 
 ########################
@@ -812,11 +813,12 @@ repmgr_initialize() {
         postgresql_start_bg
 
         local WAS_PRIMARY_BEFORE
-        was_primary_before && WAS_PRIMARY_BEFORE="true" || WAS_PRIMARY_BEFORE="false"
+        WAS_PRIMARY_BEFORE="$(was_primary_before)"
 
         repmgr_unregister_standby
         repmgr_register_standby
-        if [[ "$WAS_PRIMARY_BEFORE" = "true" ]]; then
+
+        if is_boolean_yes "$WAS_PRIMARY_BEFORE"; then
           repmgr_follow_primary
         fi
     fi
