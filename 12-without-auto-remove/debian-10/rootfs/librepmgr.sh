@@ -87,6 +87,7 @@ export REPMGR_CURRENT_PRIMARY_PORT="${REPMGR_PRIMARY_PORT}"
 export STANDBY_ALREADY_CLONED_FILENAME=".standbyAlreadyCloned"
 export WITNESS_ALREADY_STARTED_FILENAME=".witnessAlreadyStarted"
 export FORCE_UNSAFE_CLONE_FILENAME=".forceUnsafeClone"
+export FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME=".forceRunPrimaryWithoutWitness"
 
 
 # Aliases to setup PostgreSQL environment variables
@@ -233,6 +234,21 @@ repmgr_get_upstream_node() {
 }
 
 ########################
+# Check node is the same like $REPMGR_PRIMARY_HOST $REPMGR_PRIMARY_PORT
+# Arguments:
+#   None
+# Returns:
+#   Boolean
+#########################
+node_is_the_same_like_repmgr_primary_variable() {
+    if [[ "${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}" = "${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}" ]]; then
+      true
+    else
+      false
+    fi
+}
+
+########################
 # Gets the node that is currently set as primary node
 # Globals:
 #   REPMGR_*
@@ -267,7 +283,7 @@ repmgr_get_primary_node() {
         fi
     else
         if [[ -z "$upstream_host" ]]; then
-            if [[ "${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}" != "${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}" ]]; then
+            if ! node_is_the_same_like_repmgr_primary_variable; then
               primary_host="$REPMGR_PRIMARY_HOST"
               primary_port="$REPMGR_PRIMARY_PORT"
             fi
@@ -736,9 +752,12 @@ was_primary_before() {
 #########################
 repmgr_initialize() {
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
-        if [[ -d "$POSTGRESQL_DATA_DIR" ]] && ! is_dir_empty "$POSTGRESQL_DATA_DIR" || [[ "$REPMGR_PRIMARY_HOST" != "$REPMGR_NODE_NETWORK_NAME" || "$REPMGR_PRIMARY_PORT" != "$REPMGR_PORT_NUMBER" ]]; then
+        if ! node_is_the_same_like_repmgr_primary_variable ||
+              ! is_dir_empty "$POSTGRESQL_DATA_DIR" &&
+              [[ ! -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
           repmgr_wait_witness_node || exit 1
         fi
+        rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
     fi
 
     # Set the environment variables for the node's role
