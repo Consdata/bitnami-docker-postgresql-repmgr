@@ -725,20 +725,26 @@ repmgr_upgrade_extension() {
 }
 
 ########################
-# Check if that node was primary before
+# Check if that node should follow primary
 # Arguments:
 #   None
 # Returns:
 #   Boolean
 #########################
-was_primary_before() {
-    repmgr_info "Checking node status..."
-    local -r flags=("node" "status" "--csv" "-f" "$REPMGR_CONF_FILE")
-    local response
-    response=$(debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}")
+should_follow_primary() {
+    repmgr_info "Checking node(role: $REPMGR_ROLE) replication slots..."
 
-    repmgr_debug "Check node status return role: $(echo "$response" | grep 'Role')"
-    [[ $(echo "$response" | grep -c -E 'Role.*primary') -gt 0 ]] && echo 'yes' || echo 'no'
+    local -r query="SELECT count(*) from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
+    if ! count_replication_slots="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "-tA")"; then
+        repmgr_warn "Failed to check replication slot from the node '$host:$port'!"
+        exit 5
+    elif [[ -z "$count_replication_slots" ]]; then
+        repmgr_warn "Failed to get information about replication slot!"
+        exit 6
+    else
+      repmgr_debug "Replication slots found for this node: $count_replication_slots"
+      [[ "$count_replication_slots" -gt 0 || "$REPMGR_ROLE" = "primary" ]] && echo 'no' || echo 'yes'
+    fi
 }
 
 ########################
@@ -830,14 +836,13 @@ repmgr_initialize() {
     else
         (( POSTGRESQL_MAJOR_VERSION >= 12 )) && postgresql_configure_recovery
         postgresql_start_bg
-
-        local WAS_PRIMARY_BEFORE
-        WAS_PRIMARY_BEFORE="$(was_primary_before)"
-
         repmgr_unregister_standby
         repmgr_register_standby
 
-        if is_boolean_yes "$WAS_PRIMARY_BEFORE"; then
+        local should_follow
+        if ! should_follow=$(should_follow_primary); then
+          exit 7
+        elif is_boolean_yes "$should_follow"; then
           repmgr_follow_primary
         fi
     fi
