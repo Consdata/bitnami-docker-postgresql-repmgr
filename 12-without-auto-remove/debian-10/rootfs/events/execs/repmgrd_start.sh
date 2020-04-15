@@ -10,8 +10,10 @@ set -o pipefail
 # Set the environment variables for the node's role
 eval "$(repmgr_set_role)"
 
-if ! should_follow=$(should_follow_primary); then
-  exit 7
-elif is_boolean_yes "$should_follow"; then
-  repmgr_follow_primary
+if [[ "$REPMGR_ROLE" = "standby" ]]; then
+    if ! should_follow=$(should_follow_primary); then
+      exit 7
+    elif is_boolean_yes "$should_follow"; then
+      repmgr_follow_primary
+    fi
 fi
