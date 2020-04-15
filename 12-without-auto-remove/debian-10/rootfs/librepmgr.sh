@@ -519,26 +519,31 @@ EOF
 }
 
 ########################
-# Waits until the primary node responds
+# Waits until the node responds
 # Globals:
 #   REPMGR_*
 # Arguments:
-#   None
+#   name
+#   host
+#   port
 # Returns:
 #   None
 #########################
-repmgr_wait_primary_node() {
+repmgr_wait_node() {
+    local -r name="$1"
+    local -r host="$2"
+    local -r port="$3"
     local return_value=1
     local -i timeout=60
     local -i step=10
     local -i max_tries=$(( timeout / step ))
     local schemata
-    repmgr_info "Waiting for primary node..."
-    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
+    repmgr_info "Waiting for $name node..."
+    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on '${host}:${port}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
     for ((i = 0 ; i <= timeout ; i+=step )); do
         local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
-        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "-tA")"; then
-            repmgr_debug "Host '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}' is not accessible"
+        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$host" "$port" "-tA")"; then
+            repmgr_debug "Host '${host}:${port}' is not accessible"
         else
             if [[ $schemata -ne 1 ]]; then
                 repmgr_debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
@@ -553,6 +558,20 @@ repmgr_wait_primary_node() {
 }
 
 ########################
+# Waits until the primary node responds
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_wait_primary_node() {
+    repmgr_wait_node "primary" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT"
+    return $?
+}
+
+########################
 # Waits until the witness node responds
 # Globals:
 #   REPMGR_*
@@ -562,22 +581,52 @@ repmgr_wait_primary_node() {
 #   None
 #########################
 repmgr_wait_witness_node() {
+    repmgr_wait_node "witness" "$REPMGR_WITNESS_NODE" "$REPMGR_WITNESS_PORT"
+    return $?
+}
+
+########################
+# Get repmgr node status
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_get_replication_lag() {
+    repmgr_info "Getting replication lag..."
+    local -r flags=("node" "check" "-f" "$REPMGR_CONF_FILE" "-qt" "--replication-lag")
+
+    debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+}
+
+########################
+# Waits until the lag will be resolve
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_wait_for_resolve_replication_lag() {
     local return_value=1
-    local -i timeout=60
+    local -i timeout=120
     local -i step=10
     local -i max_tries=$(( timeout / step ))
-    local schemata
-    repmgr_info "Waiting for witness node..."
-    repmgr_debug "Wait for schema $REPMGR_DATABASE.repmgr on '${REPMGR_WITNESS_NODE}:${REPMGR_WITNESS_PORT}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
-    for ((i = 0 ; i <= timeout ; i+=step )); do
-        local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
-        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_WITNESS_NODE" "$REPMGR_WITNESS_PORT" "-tA")"; then
-            repmgr_debug "Host '${REPMGR_WITNESS_NODE}:${REPMGR_WITNESS_PORT}' is not accessible"
+    local lag
+    repmgr_info "Waiting for resolve lag..."
+    for ((i=0,current_try=1 ; i <= timeout ; i+=step,current_try++ )); do
+        lag="$(repmgr_get_replication_lag)"
+        local exit_code=$?
+        if [[ $exit_code -ne 0 && $exit_code -ne 1 ]]; then
+            repmgr_debug "[$current_try/$max_tries] Cannot get replication lag for this node (node return: $lag)"
         else
-            if [[ $schemata -ne 1 ]]; then
-                repmgr_debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
+            if [[ "$lag" != "OK"* ]]; then
+                repmgr_debug "[$current_try/$max_tries] Found lag on this node (node return: $lag)"
             else
-                repmgr_debug "Schema $REPMGR_DATABASE.repmgr exists!"
+                repmgr_debug "[$current_try/$max_tries] Lag is OK (node return: $lag)"
                 return_value=0 && break
             fi
         fi
@@ -838,6 +887,8 @@ repmgr_initialize() {
         postgresql_start_bg
         repmgr_unregister_standby
         repmgr_register_standby
+
+        repmgr_wait_for_resolve_replication_lag
 
         local should_follow
         if ! should_follow=$(should_follow_primary); then
