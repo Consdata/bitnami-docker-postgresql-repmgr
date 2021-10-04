@@ -2,33 +2,35 @@
 
 > [PostgreSQL](https://www.postgresql.org) is an open source object-relational database known for its reliability and data integrity. This solution includes [repmgr](https://repmgr.org), an open-source tool for managing replication and failover on PostgreSQL clusters.
 
-# TL;DR;
+# TL;DR
 
-```bash
+```console
 $ docker run --name postgresql-repmgr bitnami/postgresql-repmgr:latest
 ```
 
 ## Docker Compose
 
-```bash
+```console
 $ curl -sSL https://raw.githubusercontent.com/bitnami/bitnami-docker-postgresql-repmgr/master/docker-compose.yml > docker-compose.yml
 $ docker-compose up -d
 ```
+
+You can find the default credentials and available configuration options in the [Environment Variables](#environment-variables) section.
 
 # Why use Bitnami Images?
 
 * Bitnami closely tracks upstream source changes and promptly publishes new versions of this image using our automated systems.
 * With Bitnami images the latest bug fixes and features are available as soon as possible.
 * Bitnami containers, virtual machines and cloud images use the same components and configuration approach - making it easy to switch between formats based on your project needs.
-* All our images are based on [minideb](https://github.com/bitnami/minideb) a minimalist Debian based container image which gives you a small base container image and the familiarity of a leading linux distribution.
-* All Bitnami images available in Docker Hub are signed with [Docker Content Trust (DTC)](https://docs.docker.com/engine/security/trust/content_trust/). You can use `DOCKER_CONTENT_TRUST=1` to verify the integrity of the images.
+* All our images are based on [minideb](https://github.com/bitnami/minideb) a minimalist Debian based container image which gives you a small base container image and the familiarity of a leading Linux distribution.
+* All Bitnami images available in Docker Hub are signed with [Docker Content Trust (DCT)](https://docs.docker.com/engine/security/trust/content_trust/). You can use `DOCKER_CONTENT_TRUST=1` to verify the integrity of the images.
 * Bitnami container images are released daily with the latest distribution packages available.
 
 > This [CVE scan report](https://quay.io/repository/bitnami/postgresql-repmgr?tab=tags) contains a security report with all open CVEs. To get the list of actionable security issues, find the "latest" tag, click the vulnerability report link under the corresponding "Security scan" field and then select the "Only show fixable" filter on the next page.
 
 # Why use a non-root container?
 
-Non-root container images add an extra layer of security and are generally recommended for production environments. However, because they run as a non-root user, privileged tasks are typically off-limits. Learn more about non-root containers [in our docs](https://docs.bitnami.com/containers/how-to/work-with-non-root-containers/).
+Non-root container images add an extra layer of security and are generally recommended for production environments. However, because they run as a non-root user, privileged tasks are typically off-limits. Learn more about non-root containers [in our docs](https://docs.bitnami.com/tutorials/work-with-non-root-containers/).
 
 # How to deploy Postgresql-repmgr in Kubernetes?
 
@@ -38,15 +40,14 @@ Bitnami containers can be used with [Kubeapps](https://kubeapps.com/) for deploy
 
 # Supported tags and respective `Dockerfile` links
 
-> NOTE: Debian 9 and Oracle Linux 7 images have been deprecated in favor of Debian 10 images. Bitnami will not longer publish new Docker images based on Debian 9 or Oracle Linux 7.
-
-Learn more about the Bitnami tagging policy and the difference between rolling tags and immutable tags [in our documentation page](https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/).
+Learn more about the Bitnami tagging policy and the difference between rolling tags and immutable tags [in our documentation page](https://docs.bitnami.com/tutorials/understand-rolling-tags-containers/).
 
 
-* [`12-debian-10`, `12.2.0-debian-10-r30`, `12`, `12.2.0` (12/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/12.2.0-debian-10-r30/12/debian-10/Dockerfile)
-* [`11-debian-10`, `11.7.0-debian-10-r30`, `11`, `11.7.0`, `latest` (11/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/11.7.0-debian-10-r30/11/debian-10/Dockerfile)
-* [`10-debian-10`, `10.12.0-debian-10-r29`, `10`, `10.12.0` (10/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/10.12.0-debian-10-r29/10/debian-10/Dockerfile)
-* [`9.6-debian-10`, `9.6.17-debian-10-r29`, `9.6`, `9.6.17` (9.6/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/9.6.17-debian-10-r29/9.6/debian-10/Dockerfile)
+* [`13`, `13-debian-10`, `13.4.0`, `13.4.0-debian-10-r51` (13/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/13.4.0-debian-10-r51/13/debian-10/Dockerfile)
+* [`12`, `12-debian-10`, `12.8.0`, `12.8.0-debian-10-r53` (12/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/12.8.0-debian-10-r53/12/debian-10/Dockerfile)
+* [`11`, `11-debian-10`, `11.13.0`, `11.13.0-debian-10-r51`, `latest` (11/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/11.13.0-debian-10-r51/11/debian-10/Dockerfile)
+* [`10`, `10-debian-10`, `10.18.0`, `10.18.0-debian-10-r51` (10/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/10.18.0-debian-10-r51/10/debian-10/Dockerfile)
+* [`9.6`, `9.6-debian-10`, `9.6.23`, `9.6.23-debian-10-r52` (9.6/debian-10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/9.6.23-debian-10-r52/9.6/debian-10/Dockerfile)
 
 Subscribe to project updates by watching the [bitnami/postgresql-repmgr GitHub repo](https://github.com/bitnami/bitnami-docker-postgresql-repmgr).
 
@@ -54,19 +55,19 @@ Subscribe to project updates by watching the [bitnami/postgresql-repmgr GitHub r
 
 The recommended way to get the Bitnami PostgreSQL with Replication Manager Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/postgresql-repmgr).
 
-```bash
+```console
 $ docker pull bitnami/postgresql-repmgr:latest
 ```
 
 To use a specific version, you can pull a versioned tag. You can view the [list of available versions](https://hub.docker.com/r/bitnami/postgresql-repmgr/tags/) in the Docker Hub Registry.
 
-```bash
+```console
 $ docker pull bitnami/postgresql-repmgr:[TAG]
 ```
 
 If you wish, you can also build the image yourself.
 
-```bash
+```console
 $ docker build -t bitnami/postgresql-repmgr:latest 'https://github.com/bitnami/bitnami-docker-postgresql-repmgr.git#master:11/debian-10'
 ```
 
@@ -76,7 +77,7 @@ If you remove the container all your data will be lost, and the next time you ru
 
 For persistence you should mount a directory at the `/bitnami/postgresql` path. If the mounted directory is empty, it will be initialized on the first run.
 
-```bash
+```console
 $ docker run \
     -v /path/to/postgresql-repmgr-persistence:/bitnami/postgresql \
     bitnami/postgresql-repmgr:latest
@@ -98,7 +99,7 @@ In this example, we will create a PostgreSQL client instance that will connect t
 
 ### Step 1: Create a network
 
-```bash
+```console
 $ docker network create my-network --driver bridge
 ```
 
@@ -106,7 +107,7 @@ $ docker network create my-network --driver bridge
 
 Use the `--network <NETWORK>` argument to the `docker run` command to attach the container to the `my-network` network.
 
-```bash
+```console
 $ docker run --detach --rm --name pg-0 \
   --network my-network \
   --env REPMGR_PARTNER_NODES=pg-0 \
@@ -122,7 +123,7 @@ $ docker run --detach --rm --name pg-0 \
 
 Finally we create a new container instance to launch the PostgreSQL client and connect to the server created in the previous step:
 
-```bash
+```console
 $ docker run -it --rm \
   --network my-network \
   bitnami/postgresql:10 \
@@ -151,7 +152,7 @@ services:
       - REPMGR_PRIMARY_HOST=pg-0
       - REPMGR_NODE_NETWORK_NAME=pg-0
       - REPMGR_NODE_NAME=pg-0
-      - EPMGR_PARTNER_NODES=pg-0
+      - REPMGR_PARTNER_NODES=pg-0
   myapp:
     image: 'YOUR_APPLICATION_IMAGE'
     networks:
@@ -165,7 +166,7 @@ services:
 
 Launch the containers using:
 
-```bash
+```console
 $ docker-compose up -d
 ```
 
@@ -181,7 +182,7 @@ In order to have your custom files inside the docker image you can mount them as
 
 In the above commands you may have noticed the use of the `POSTGRESQL_PASSWORD` and `REPMGR_PASSWORD` environment variables. Passing the `POSTGRESQL_PASSWORD` environment variable when running the image for the first time will set the password of the `postgres` user to the value of `POSTGRESQL_PASSWORD` (or the content of the file specified in `POSTGRESQL_PASSWORD_FILE`). In the same way, passing the `REPMGR_PASSWORD` environment variable sets the password of the `repmgr` user to the value of `REPMGR_PASSWORD` (or the content of the file specified in `REPMGR_PASSWORD_FILE`).
 
-```bash
+```console
 $ docker run --name pg-0 --env REPMGR_PASSWORD=repmgrpass --env POSTGRESQL_PASSWORD=secretpass bitnami/postgresql-repmgr:latest
 ```
 
@@ -217,7 +218,7 @@ Refer to [Creating a database user on first run](#creating-a-database-user-on-fi
 
 By passing the `POSTGRESQL_DATABASE` environment variable when running the image for the first time, a database will be created. This is useful if your application requires that a database already exists, saving you from having to manually create the database using the PostgreSQL client.
 
-```bash
+```console
 $ docker run --name pg-0 --env POSTGRESQL_DATABASE=my_database bitnami/postgresql-repmgr:latest
 ```
 
@@ -225,7 +226,7 @@ $ docker run --name pg-0 --env POSTGRESQL_DATABASE=my_database bitnami/postgresq
 
 You can also create a restricted database user that only has permissions for the database created with the [`POSTGRESQL_DATABASE`](#creating-a-database-on-first-run) environment variable. To do this, provide the `POSTGRESQL_USERNAME` environment variable.
 
-```bash
+```console
 $ docker run --name pg-0 --env POSTGRESQL_USERNAME=my_user --env POSTGRESQL_PASSWORD=password123 --env POSTGRESQL_DATABASE=my_database bitnami/postgresql-repmgr:latest
 ```
 
@@ -243,6 +244,8 @@ A HA PostgreSQL cluster with [Streaming replication](https://www.postgresql.org/
 - `REPMGR_USERNAME`: Username for `repmgr` user. Defaults to `repmgr`.
 - `REPMGR_PASSWORD_FILE`: Path to a file that contains the `repmgr` user password. This will override the value specified in `REPMGR_PASSWORD`. No defaults.
 - `REPMGR_PASSWORD`: Password for `repmgr` user. No defaults.
+- `REPMGR_USE_PASSFILE`: Configure repmgr to use `passfile` and `PGPASSFILE` instead of plain-text password in its configuration.
+- `REPMGR_PASSFILE_PATH`: Location of the passfile, if it doesn't exist it will be created using REPMGR credentials.
 - `REPMGR_PRIMARY_HOST`: Hostname of the initial primary node. No defaults.
 - `REPMGR_PARTNER_NODES`: Comma separated list of partner nodes in the cluster.  No defaults.
 - `REPMGR_NODE_NAME`: Node name. No defaults.
@@ -251,9 +254,13 @@ A HA PostgreSQL cluster with [Streaming replication](https://www.postgresql.org/
 
 In a HA PostgreSQL cluster you can have one primary and zero or more standby nodes. The primary node is in read-write mode, while the standby nodes are in read-only mode. For best performance its advisable to limit the reads to the standby nodes.
 
+> NOTE: REPMGR_USE_PASSFILE and REPMGR_PASSFILE_PATH will be ignored for Postgresql prior to version 9.6.
+>
+> When mounting an external passfile using REPMGR_PASSFILE_PATH, it is necessary to also configure REPMGR_PASSWORD and REPMGR_USERNAME accordingly.
+
 ### Step 1: Create a network
 
-```bash
+```console
 $ docker network create my-network --driver bridge
 ```
 
@@ -261,7 +268,7 @@ $ docker network create my-network --driver bridge
 
 The first step is to start the initial primary node:
 
-```bash
+```console
 $ docker run --detach --name pg-0 \
   --network my-network \
   --env REPMGR_PARTNER_NODES=pg-0,pg-1 \
@@ -277,7 +284,7 @@ $ docker run --detach --name pg-0 \
 
 Next we start a standby node:
 
-```bash
+```console
 $ docker run --detach --name pg-1 \
   --network my-network \
   --env REPMGR_PARTNER_NODES=pg-0,pg-1 \
@@ -299,23 +306,67 @@ If the master goes down, **repmgr** will ensure any of the standby nodes takes t
 
 With Docker Compose the HA PostgreSQL cluster can be setup using the [`docker-compose.yml`](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/blob/master/docker-compose.yml) file present in this repository:
 
-```bash
+```console
 $ curl -sSL https://raw.githubusercontent.com/bitnami/bitnami-docker-postgresql-repmgr/master/docker-compose.yml > docker-compose.yml
 $ docker-compose up -d
 ```
+
+## Securing PostgreSQL traffic
+
+PostgreSQL supports the encryption of connections using the SSL/TLS protocol. Should you desire to enable this optional feature, you may use the following environment variables to configure the application:
+
+ - `POSTGRESQL_ENABLE_TLS`: Whether to enable TLS for traffic or not. Defaults to `no`.
+ - `POSTGRESQL_TLS_CERT_FILE`: File containing the certificate file for the TLS traffic. No defaults.
+ - `POSTGRESQL_TLS_KEY_FILE`: File containing the key for certificate. No defaults.
+ - `POSTGRESQL_TLS_CA_FILE`: File containing the CA of the certificate. If provided, PostgreSQL will authenticate TLS/SSL clients by requesting them a certificate (see [ref](https://www.postgresql.org/docs/9.6/auth-methods.html)). No defaults.
+ - `POSTGRESQL_TLS_CRL_FILE`: File containing a Certificate Revocation List. No defaults.
+ - `POSTGRESQL_TLS_PREFER_SERVER_CIPHERS`: Whether to use the server's TLS cipher preferences rather than the client's. Defaults to `yes`.
+
+When enabling TLS, PostgreSQL will support both standard and encrypted traffic by default, but prefer the latter. Below there are some examples on how to quickly set up TLS traffic:
+
+1. Using `docker run`
+
+    ```console
+    $ docker run \
+        -v /path/to/certs:/opt/bitnami/postgresql/certs \
+        -e POSTGRESQL_ENABLE_TLS=yes \
+        -e POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt \
+        -e POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key \
+        bitnami/postgresql-repmgr:latest
+    ```
+
+2. Modifying the `docker-compose.yml` file present in this repository:
+
+    ```yaml
+    services:
+      pg-0:
+      ...
+        environment:
+          ...
+          - POSTGRESQL_ENABLE_TLS=yes
+          - POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt
+          - POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key
+        ...
+        volumes:
+          ...
+          - /path/to/certs:/opt/bitnami/postgresql/certs
+      ...
+    ```
+
+Alternatively, you may also provide this configuration in your [custom](https://github.com/bitnami/bitnami-docker-postgresql-repmgr) configuration file.
 
 ## Configuration file
 
 The image looks for the `repmgr.conf`, `postgresql.conf` and `pg_hba.conf` files in `/opt/bitnami/repmgr/conf/` and `/opt/bitnami/postgresql/conf/`. You can mount a volume at `/bitnami/repmgr/conf/` and copy/edit the configuration files in the `/path/to/custom-conf/`. The default configurations will be populated to the `conf/` directories if `/bitnami/repmgr/conf/` is empty.
 
-```
+```console
 /path/to/custom-conf/
 └── postgresql.conf
 ```
 
 As the PostgreSQL with Replication manager image is non-root, you need to set the proper permissions to the mounted directory in your host:
 
-```bash
+```console
 $ sudo chgrp -R root /path/to/custom-conf/
 $ sudo chmod -R g+rwX /path/to/custom-conf/
 ```
@@ -324,7 +375,7 @@ $ sudo chmod -R g+rwX /path/to/custom-conf/
 
 Run the PostgreSQL image, mounting a directory from your host.
 
-```bash
+```console
 $ docker run --name pg-0 \
     -v /path/to/custom-conf/:/bitnami/repmgr/conf/ \
     bitnami/postgresql-repmgr:latest
@@ -354,7 +405,7 @@ services:
 
 Edit the configuration on your host using your favorite editor.
 
-```bash
+```console
 vi /path/to/custom-conf/postgresql.conf
 ```
 
@@ -362,13 +413,13 @@ vi /path/to/custom-conf/postgresql.conf
 
 After changing the configuration, restart your PostgreSQL container for changes to take effect.
 
-```bash
+```console
 $ docker restart pg-0
 ```
 
 or using Docker Compose:
 
-```bash
+```console
 $ docker-compose restart pg-0
 $ docker-compose restart pg-1
 ```
@@ -380,7 +431,7 @@ Refer to the [server configuration](http://www.postgresql.org/docs/10/static/run
 Apart of using a custom `repmgr.conf`, `postgresql.conf` or `pg_hba.conf`, you can include files ending in `.conf` from the `conf.d` directory in the volume at `/bitnami/postgresql/conf/`.
 For this purpose, the default `postgresql.conf` contains the following section:
 
-```
+```config
 #------------------------------------------------------------------------------
 # CONFIG FILE INCLUDES
 #------------------------------------------------------------------------------
@@ -393,7 +444,7 @@ include_dir = 'conf.d'  # Include files ending in '.conf' from directory 'conf.d
 
 If you are using your custom `postgresql.conf`, you should create (or uncomment) the above section in your config file, in this case the structure should be something like
 
-```
+```console
 /path/to/custom-conf/
 └── postgresql.conf
 /path/to/extra-custom-conf/
@@ -402,7 +453,7 @@ If you are using your custom `postgresql.conf`, you should create (or uncomment)
 
 Remember to set the proper permissions to the mounted directory in your host:
 
-```bash
+```console
 $ sudo chgrp -R root /path/to/extra-custom-conf/
 $ sudo chmod -R g+rwX /path/to/extra-custom-conf/
 ```
@@ -411,7 +462,7 @@ $ sudo chmod -R g+rwX /path/to/extra-custom-conf/
 
 Run the PostgreSQL image, mounting a directory from your host.
 
-```bash
+```console
 $ docker run --name pg-0 \
     -v /path/to/extra-custom-conf/:/bitnami/postgresql/conf/conf.d/ \
     -v /path/to/custom-conf/:/bitnami/repmgr/conf/ \
@@ -444,7 +495,7 @@ services:
 
 Edit the configuration on your host using your favorite editor.
 
-```bash
+```console
 vi /path/to/extra-custom-conf/extended.conf
 ```
 
@@ -452,13 +503,13 @@ vi /path/to/extra-custom-conf/extended.conf
 
 After changing the configuration, restart your PostgreSQL container for changes to take effect.
 
-```bash
+```console
 $ docker restart pg-0
 ```
 
 or using Docker Compose:
 
-```bash
+```console
 $ docker-compose restart pg-0
 $ docker-compose restart pg-1
 ```
@@ -467,43 +518,53 @@ $ docker-compose restart pg-1
 
 Please see the list of environment variables available in the Bitnami PostgreSQL with Replication Manager container in the next table:
 
-| Environment Variable                 | Default value                      |
-| :----------------------------------- | :--------------------------------- |
-| REPMGR_NODE_ID                       | `nil`                              |
-| REPMGR_NODE_NAME                     | `nil`                              |
-| REPMGR_NODE_NETWORK_NAME             | `nil`                              |
-| REPMGR_NODE_PRIORITY                 | `100`                              |
-| REPMGR_PARTNER_NODES                 | `nil`                              |
-| REPMGR_PRIMARY_HOST                  | `nil`                              |
-| REPMGR_PRIMARY_PORT                  | `5432`                             |
-| REPMGR_NODE_ID                       | `nil`                              |
-| REPMGR_PORT_NUMBER                   | `5432`                             |
-| REPMGR_LOG_LEVEL                     | `NOTICE`                           |
-| REPMGR_START_OPTIONS                 | `nil`                              |
-| REPMGR_CONNECT_TIMEOUT               | `5`                                |
-| REPMGR_RECONNECT_ATTEMPTS            | `3`                                |
-| REPMGR_RECONNECT_INTERVAL            | `5`                                |
-| REPMGR_USE_REPLICATION_SLOTS         | `1`                                |
-| REPMGR_MASTER_RESPONSE_TIMEOUT       | `20`                               |
-| REPMGR_DEGRADED_MONITORING_TIMEOUT   | `5`                                |
-| REPMGR_USERNAME                      | `repmgr`                           |
-| REPMGR_DATABASE                      | `repmgr`                           |
-| REPMGR_PASSWORD                      | `nil`                              |
-| REPMGR_PASSWORD_FILE                 | `nil`                              |
-| POSTGRESQL_USERNAME                  | `postgres`                         |
-| POSTGRESQL_DATABASE                  | `nil`                              |
-| POSTGRESQL_PASSWORD                  | `nil`                              |
-| POSTGRESQL_PASSWORD_FILE             | `nil`                              |
-| POSTGRESQL_POSTGRES_PASSWORD         | `nil`                              |
-| POSTGRESQL_POSTGRES_PASSWORD_FILE    | `nil`                              |
-| POSTGRESQL_PORT_NUMBER               | `5432`                             |
-| POSTGRESQL_INITDB_ARGS               | `nil`                              |
+| Environment Variable                 | Default value |
+|:-------------------------------------|:--------------|
+| REPMGR_NODE_ID                       | `nil`         |
+| REPMGR_NODE_NAME                     | `nil`         |
+| REPMGR_NODE_NETWORK_NAME             | `nil`         |
+| REPMGR_NODE_PRIORITY                 | `100`         |
+| REPMGR_PARTNER_NODES                 | `nil`         |
+| REPMGR_PRIMARY_HOST                  | `nil`         |
+| REPMGR_NODE_LOCATION                 | `default`     |
+| REPMGR_PRIMARY_PORT                  | `5432`        |
+| REPMGR_NODE_ID                       | `nil`         |
+| REPMGR_PORT_NUMBER                   | `5432`        |
+| REPMGR_LOG_LEVEL                     | `NOTICE`      |
+| REPMGR_START_OPTIONS                 | `nil`         |
+| REPMGR_CONNECT_TIMEOUT               | `5`           |
+| REPMGR_RECONNECT_ATTEMPTS            | `3`           |
+| REPMGR_RECONNECT_INTERVAL            | `5`           |
+| REPMGR_USE_REPLICATION_SLOTS         | `1`           |
+| REPMGR_MASTER_RESPONSE_TIMEOUT       | `20`          |
+| REPMGR_DEGRADED_MONITORING_TIMEOUT   | `5`           |
+| REPMGR_USERNAME                      | `repmgr`      |
+| REPMGR_DATABASE                      | `repmgr`      |
+| REPMGR_PASSWORD                      | `nil`         |
+| REPMGR_PASSWORD_FILE                 | `nil`         |
+| REPMGR_USE_PASSFILE                  | `nil`         |
+| POSTGRESQL_USERNAME                  | `postgres`    |
+| POSTGRESQL_DATABASE                  | `nil`         |
+| POSTGRESQL_PASSWORD                  | `nil`         |
+| POSTGRESQL_PASSWORD_FILE             | `nil`         |
+| POSTGRESQL_POSTGRES_PASSWORD         | `nil`         |
+| POSTGRESQL_POSTGRES_PASSWORD_FILE    | `nil`         |
+| POSTGRESQL_PORT_NUMBER               | `5432`        |
+| POSTGRESQL_INITDB_ARGS               | `nil`         |
+| POSTGRESQL_PGCTLTIMEOUT              | `60`          |
+| POSTGRESQL_SHUTDOWN_MODE             | `fast`        |
+| POSTGRESQL_ENABLE_TLS                | `no`          |
+| POSTGRESQL_TLS_CERT_FILE             | `nil`         |
+| POSTGRESQL_TLS_KEY_FILE              | `nil`         |
+| POSTGRESQL_TLS_CA_FILE               | `nil`         |
+| POSTGRESQL_TLS_CRL_FILE              | `nil`         |
+| POSTGRESQL_TLS_PREFER_SERVER_CIPHERS | `yes`         |
 
 # Logging
 
 The Bitnami PostgreSQL with Replication Manager Docker image sends the container logs to `stdout`. To view the logs:
 
-```bash
+```console
 $ docker logs pg-0
 ```
 
@@ -517,7 +578,7 @@ Bitnami provides up-to-date versions of PostgreSQL with Replication Manager, inc
 
 ### Step 1: Get the updated image
 
-```bash
+```console
 $ docker pull bitnami/postgresql-repmgr:latest
 ```
 
@@ -527,32 +588,32 @@ or if you're using Docker Compose, update the value of the image property to `bi
 
 Stop the currently running container using the command
 
-```bash
+```console
 $ docker stop pg-0
 ```
 
 or using Docker Compose:
 
-```bash
+```console
 $ docker-compose stop pg-0
 $ docker-compose stop pg-1
 ```
 
 Next, take a snapshot of the persistent volume `/path/to/postgresql-persistence` using:
 
-```bash
+```console
 $ rsync -a /path/to/postgresql-persistence /path/to/postgresql-persistence.bkp.$(date +%Y%m%d-%H.%M.%S)
 ```
 
 ### Step 3: Remove the currently running container
 
-```bash
+```console
 $ docker rm -v pg-0
 ```
 
 or using Docker Compose:
 
-```bash
+```console
 $ docker-compose rm -v pg-0
 $ docker-compose rm -v pg-1
 ```
@@ -561,13 +622,13 @@ $ docker-compose rm -v pg-1
 
 Re-create your container from the new image.
 
-```bash
+```console
 $ docker run --name pg-0 bitnami/postgresql-repmgr:latest
 ```
 
 or using Docker Compose:
 
-```bash
+```console
 $ docker-compose up pg-0
 $ docker-compose up pg-1
 ```
@@ -589,7 +650,7 @@ We'd love for you to contribute to this container. You can request new features 
 
 # Issues
 
-If you encountered a problem running this container, you can file an [issue](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/issues). For us to provide better support, be sure to include the following information in your issue:
+If you encountered a problem running this container, you can file an [issue](https://github.com/bitnami/bitnami-docker-postgresql-repmgr/issues/new). For us to provide better support, be sure to include the following information in your issue:
 
 - Host OS and version
 - Docker version (`docker version`)
@@ -599,7 +660,7 @@ If you encountered a problem running this container, you can file an [issue](htt
 
 # License
 
-Copyright 2020 Bitnami
+Copyright 2021 Bitnami
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
