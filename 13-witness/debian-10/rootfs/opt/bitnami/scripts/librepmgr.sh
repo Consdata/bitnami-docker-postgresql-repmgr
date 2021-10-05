@@ -797,7 +797,7 @@ should_follow_primary() {
     info "Checking node(role: $REPMGR_ROLE) replication slots..."
 
     local -r query="SELECT count(*) from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
-    if ! count_replication_slots="$(echo "$query" | NO_ERRORS=true postgresql_execute "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "-tA")"; then
+    if ! count_replication_slots="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
         warn "Failed to check replication slot from the node '$host:$port'!"
         exit 5
     elif [[ -z "$count_replication_slots" ]]; then
