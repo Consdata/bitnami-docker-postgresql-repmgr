@@ -20,9 +20,6 @@ set -o pipefail
 repmgr_validate
 postgresql_validate
 
-# Set the environment variables for the node's role
-eval "$(repmgr_set_role)"
-
 # Ensure PostgreSQL is stopped when this script ends.
 trap "postgresql_stop" EXIT
 # Ensure 'daemon' user exists when running as 'root'
@@ -32,4 +29,4 @@ repmgr_postgresql_configuration
 # Prepare repmgr configuration
 repmgr_generate_repmgr_config
 # Initialize PostgreSQL & repmgr
-repmgr_initialize
+repmgr_initialize || exit $?
