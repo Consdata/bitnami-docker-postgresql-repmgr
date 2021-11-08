@@ -866,8 +866,8 @@ repmgr_initialize() {
     # Configure port and restrict access to PostgreSQL (MD5)
     postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 
-    postgresql_configure_replication_parameters
-    postgresql_configure_fsync
+    #postgresql_configure_replication_parameters
+    #postgresql_configure_fsync
 
     is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
     if [[ "$REPMGR_NODE_TYPE" = "witness" ]]; then
