@@ -187,11 +187,11 @@ repmgr_get_upstream_node() {
 #   Boolean
 #########################
 node_is_the_same_like_repmgr_primary_variable() {
+    debug "Primary host: '${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}'"
+    debug "Current host: '${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}'"
     if [[ "${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}" = "${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}" ]]; then
-      debug "node_is_the_same_like_repmgr_primary_variable: true"
       true
     else
-      debug "node_is_the_same_like_repmgr_primary_variable: false"
       false
     fi
 }
