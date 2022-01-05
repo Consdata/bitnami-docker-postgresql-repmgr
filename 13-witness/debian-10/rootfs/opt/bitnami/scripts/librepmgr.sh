@@ -821,6 +821,15 @@ should_follow_primary() {
 #   None
 #########################
 repmgr_initialize() {
+    # Set the environment variables for the node's role
+    eval "$(repmgr_set_role)"
+
+    # Configure postgres
+    export POSTGRESQL_MASTER_HOST="$REPMGR_CURRENT_PRIMARY_HOST"
+    export POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
+    export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
+    export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
+
     debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
@@ -832,15 +841,6 @@ repmgr_initialize() {
           debug "Skipping waiting on witness"
         fi
     fi
-
-    # Set the environment variables for the node's role
-    eval "$(repmgr_set_role)"
-
-    # Configure postgres
-    export POSTGRESQL_MASTER_HOST="$REPMGR_CURRENT_PRIMARY_HOST"
-    export POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
-    export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
-    export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
 
     ensure_dir_exists "$REPMGR_LOCK_DIR"
     am_i_root && chown "$POSTGRESQL_DAEMON_USER:$POSTGRESQL_DAEMON_GROUP" "$REPMGR_LOCK_DIR"
