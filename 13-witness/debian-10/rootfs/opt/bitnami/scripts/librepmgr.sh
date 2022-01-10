@@ -187,6 +187,8 @@ repmgr_get_upstream_node() {
 #   Boolean
 #########################
 node_is_the_same_like_repmgr_primary_variable() {
+    debug "Primary host: '${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}'"
+    debug "Current host: '${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}'"
     if [[ "${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}" = "${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}" ]]; then
       true
     else
@@ -819,15 +821,6 @@ should_follow_primary() {
 #   None
 #########################
 repmgr_initialize() {
-    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
-        if ! node_is_the_same_like_repmgr_primary_variable ||
-              ! is_dir_empty "$POSTGRESQL_DATA_DIR" &&
-              [[ ! -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
-          repmgr_wait_witness_node || exit 1
-        fi
-        rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
-    fi
-
     # Set the environment variables for the node's role
     eval "$(repmgr_set_role)"
 
@@ -837,8 +830,17 @@ repmgr_initialize() {
     export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
     export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
 
-    debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}'"
+    debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
+    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+        if ! node_is_the_same_like_repmgr_primary_variable ||
+              ! is_dir_empty "$POSTGRESQL_DATA_DIR" &&
+              [[ ! -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
+          repmgr_wait_witness_node || exit 1
+        else
+          debug "Skipping waiting on witness"
+        fi
+    fi
 
     ensure_dir_exists "$REPMGR_LOCK_DIR"
     am_i_root && chown "$POSTGRESQL_DAEMON_USER:$POSTGRESQL_DAEMON_GROUP" "$REPMGR_LOCK_DIR"
@@ -870,6 +872,7 @@ repmgr_initialize() {
     #postgresql_configure_fsync
 
     is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
+    debug "Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     if [[ "$REPMGR_NODE_TYPE" = "witness" ]]; then
       if [[ ! -f "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME" ]]; then
             repmgr_wait_primary_node || exit 1
@@ -923,4 +926,9 @@ repmgr_initialize() {
           repmgr_follow_primary
         fi
     fi
+    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+        info "$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME exists, deleting..."
+        rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
+    fi
+    info "Repmgr initialized successfully"
 }
