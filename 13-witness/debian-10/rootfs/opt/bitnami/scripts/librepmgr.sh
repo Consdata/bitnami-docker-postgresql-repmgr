@@ -800,13 +800,18 @@ should_follow_primary() {
 
     local -r query="SELECT count(*) from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
     if ! count_replication_slots="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-        warn "Failed to check replication slot from the node '$host:$port'!"
+        warn "Failed to check replication slot from the node '$REPMGR_CURRENT_PRIMARY_HOST:$REPMGR_CURRENT_PRIMARY_PORT'!"
         exit 5
     elif [[ -z "$count_replication_slots" ]]; then
         warn "Failed to get information about replication slot!"
         exit 6
     else
       debug "Replication slots found for this node: $count_replication_slots"
+
+      local -r query_rep_slots="SELECT * from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
+      local -r rep_slots="$(echo "$query_rep_slots" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"
+      debug "Replication slots: $rep_slots"
+
       if [[ "$count_replication_slots" -gt 0 || "$REPMGR_ROLE" = "primary" ]]; then
         debug "should_follow_primary: returns no"
         echo 'no'
