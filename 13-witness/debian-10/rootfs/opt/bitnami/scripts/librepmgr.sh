@@ -932,7 +932,7 @@ repmgr_initialize() {
           repmgr_follow_primary
         fi
     fi
-    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+    if [[ -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
         info "$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME exists, deleting..."
         rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
     fi
