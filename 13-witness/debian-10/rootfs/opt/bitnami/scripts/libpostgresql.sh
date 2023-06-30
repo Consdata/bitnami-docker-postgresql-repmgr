@@ -712,6 +712,7 @@ postgresql_stop() {
     local -r -a cmd=("pg_ctl" "stop" "-w" "-D" "$POSTGRESQL_DATA_DIR" "-m" "$POSTGRESQL_SHUTDOWN_MODE" "-t" "$POSTGRESQL_PGCTLTIMEOUT")
     if [[ -f "$POSTGRESQL_PID_FILE" ]]; then
         info "Stopping PostgreSQL..."
+        debug "Executing: ${cmd[@]}"
         if am_i_root; then
             gosu "$POSTGRESQL_DAEMON_USER" "${cmd[@]}"
         else
@@ -741,6 +742,7 @@ postgresql_start_bg() {
         pg_ctl_cmd+=("gosu" "$POSTGRESQL_DAEMON_USER")
     fi
     pg_ctl_cmd+=("$POSTGRESQL_BIN_DIR"/pg_ctl)
+    debug "Executing: $pg_ctl_cmd start ${pg_ctl_flags[@]}"
     if [[ "${BITNAMI_DEBUG:-false}" = true ]] || [[ $pg_logs = true ]]; then
         "${pg_ctl_cmd[@]}" "start" "${pg_ctl_flags[@]}"
     else
