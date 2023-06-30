@@ -594,7 +594,7 @@ repmgr_get_replication_lag() {
 #########################
 repmgr_wait_for_resolve_replication_lag() {
     local return_value=1
-    local -i timeout=120
+    local -i timeout=$POSTGRESQL_REPLICATION_LAG_MAX_TIMEOUT
     local -i step=10
     local -i max_tries=$(( timeout / step ))
     local lag
@@ -830,7 +830,7 @@ repmgr_initialize() {
     export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
     export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
 
-    debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
+    debug "Node ID: '$(repmgr_get_node_id)', Repmgr_role: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
         if ! node_is_the_same_like_repmgr_primary_variable ||
