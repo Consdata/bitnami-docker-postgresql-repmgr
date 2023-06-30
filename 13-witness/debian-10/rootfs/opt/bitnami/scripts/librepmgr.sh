@@ -594,7 +594,7 @@ repmgr_get_replication_lag() {
 #########################
 repmgr_wait_for_resolve_replication_lag() {
     local return_value=1
-    local -i timeout=120
+    local -i timeout=$POSTGRESQL_REPLICATION_LAG_MAX_TIMEOUT
     local -i step=10
     local -i max_tries=$(( timeout / step ))
     local lag
@@ -796,18 +796,29 @@ repmgr_upgrade_extension() {
 #   Boolean
 #########################
 should_follow_primary() {
-    info "Checking node(role: $REPMGR_ROLE) replication slots..."
+    info "should_follow_primary: Checking node(role: $REPMGR_ROLE) replication slots..."
 
     local -r query="SELECT count(*) from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
     if ! count_replication_slots="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-        warn "Failed to check replication slot from the node '$host:$port'!"
+        warn "Failed to check replication slot from the node '$REPMGR_CURRENT_PRIMARY_HOST:$REPMGR_CURRENT_PRIMARY_PORT'!"
         exit 5
     elif [[ -z "$count_replication_slots" ]]; then
         warn "Failed to get information about replication slot!"
         exit 6
     else
       debug "Replication slots found for this node: $count_replication_slots"
-      [[ "$count_replication_slots" -gt 0 || "$REPMGR_ROLE" = "primary" ]] && echo 'no' || echo 'yes'
+
+      local -r query_rep_slots="SELECT * from pg_replication_slots s LEFT JOIN nodes n ON s.slot_name=n.slot_name WHERE n.node_id=$(repmgr_get_node_id);"
+      local -r rep_slots="$(echo "$query_rep_slots" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"
+      debug "Replication slots: $rep_slots"
+
+      if [[ "$count_replication_slots" -gt 0 || "$REPMGR_ROLE" = "primary" ]]; then
+        debug "should_follow_primary: returns no"
+        echo 'no'
+      else
+        debug "should_follow_primary: returns yes"
+        echo 'yes'
+      fi
     fi
 }
 
@@ -830,7 +841,7 @@ repmgr_initialize() {
     export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
     export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
 
-    debug "Node ID: '$(repmgr_get_node_id)', Rol: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
+    debug "Node ID: '$(repmgr_get_node_id)', Repmgr_role: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
         if ! node_is_the_same_like_repmgr_primary_variable ||
@@ -926,7 +937,7 @@ repmgr_initialize() {
           repmgr_follow_primary
         fi
     fi
-    if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
+    if [[ -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
         info "$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME exists, deleting..."
         rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
     fi
