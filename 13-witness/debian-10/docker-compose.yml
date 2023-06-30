@@ -1,7 +1,9 @@
 version: '2'
 services:
   pg-0:
-    image: consdata/bitnami-postgresql-repmgr:13-witness-v2
+    build:
+      context: ./
+      dockerfile: Dockerfile
     ports:
       - 5432:5432
     volumes:
@@ -22,7 +24,9 @@ services:
       - BITNAMI_DEBUG=true
       - REPMGR_LOG_LEVEL=DEBUG
   pg-1:
-    image: consdata/bitnami-postgresql-repmgr:13-witness-v2
+    build:
+      context: ./
+      dockerfile: Dockerfile
     ports:
       - 5433:5432
     volumes:
@@ -43,7 +47,9 @@ services:
       - BITNAMI_DEBUG=true
       - REPMGR_LOG_LEVEL=DEBUG
   pg-witness:
-    image: consdata/bitnami-postgresql-repmgr:13-witness-v2
+    build:
+      context: ./
+      dockerfile: Dockerfile
     ports:
       - 5431:5432
     volumes:
