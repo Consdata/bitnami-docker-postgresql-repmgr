@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
 #
 # Bitnami custom library
 
@@ -40,7 +42,7 @@ print_welcome_page() {
 #   None
 #########################
 print_image_welcome_page() {
-    local github_url="https://github.com/bitnami/bitnami-docker-${BITNAMI_APP_NAME}"
+    local github_url="https://github.com/bitnami/containers"
 
     log ""
     log "${BOLD}Welcome to the Bitnami ${BITNAMI_APP_NAME} container${RESET}"
