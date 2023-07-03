@@ -876,6 +876,8 @@ repmgr_initialize() {
           exit 7
         elif is_boolean_yes "$should_follow"; then
           repmgr_follow_primary
+        else
+          debug "standby already following primary"
         fi
     elif [[ "$REPMGR_ROLE" = "witness" ]]; then
         postgresql_start_bg
