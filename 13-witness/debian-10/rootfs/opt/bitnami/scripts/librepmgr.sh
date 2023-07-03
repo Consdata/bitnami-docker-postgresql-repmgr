@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
 #
 # Bitnami Postgresql Repmgr library
 
@@ -88,8 +90,8 @@ repmgr_validate() {
         error_code=1
     }
 
-    if [[ -z "$REPMGR_WITNESS_NODE" && "$REPMGR_NODE_TYPE" != "witness" ]]; then
-        print_validation_error "The witness cannot be empty. Set the environment variable REPMGR_WITNESS_NODE with a witness node host (You can also change default port (5432) changing REPMGR_WITNESS_PORT)."
+    if [[ -z "$REPMGR_PARTNER_NODES" ]]; then
+        print_validation_error "The list of partner nodes cannot be empty. Set the environment variable REPMGR_PARTNER_NODES with a comma separated list of partner nodes."
     fi
     if [[ -z "$REPMGR_PRIMARY_HOST" ]]; then
         print_validation_error "The initial primary host is required. Set the environment variable REPMGR_PRIMARY_HOST with the initial primary host."
@@ -154,34 +156,42 @@ repmgr_get_upstream_node() {
     local suggested_primary_host=""
     local suggested_primary_port=""
 
-    if [[ -n "$REPMGR_WITNESS_NODE" ]]; then
-        info "Searching primary node using witness..."
-        host="$REPMGR_WITNESS_NODE"
-        port="${REPMGR_WITNESS_PORT:-5432}"
-        debug "Checking witness '$host:$port'..."
-        local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
-        if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-            debug "Skipping: failed to get primary from the node '$host:$port'!"
-        elif [[ -z "$primary_conninfo" ]]; then
-            debug "Skipping: failed to get information about primary nodes!"
-        elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
-            suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
-            suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
-            debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
-            if [[ -n "$pretending_primary_host" ]]; then
-                if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
-                    warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
-                    pretending_primary_host="" && pretending_primary_port=""
+    if [[ -n "$REPMGR_PARTNER_NODES" ]]; then
+        info "Querying all partner nodes for common upstream node..."
+        read -r -a nodes <<<"$(tr ',;' ' ' <<<"${REPMGR_PARTNER_NODES}")"
+        for node in "${nodes[@]}"; do
+            # intentionally accept inncorect address (without [schema:]// )
+            [[ "$node" =~ ^(([^:/?#]+):)?// ]] || node="tcp://${node}"
+            host="$(parse_uri "$node" 'host')"
+            port="$(parse_uri "$node" 'port')"
+            port="${port:-$REPMGR_PRIMARY_PORT}"
+            debug "Checking node '$host:$port'..."
+            local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
+            if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
+                debug "Skipping: failed to get primary from the node '$host:$port'!"
+                continue
+            elif [[ -z "$primary_conninfo" ]]; then
+                debug "Skipping: failed to get information about primary nodes!"
+                continue
+            elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
+                suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
+                suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
+                debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
+                if [[ -n "$pretending_primary_host" ]]; then
+                    if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
+                        warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
+                        pretending_primary_host="" && pretending_primary_port="" && break
+                    fi
+                else
+                    debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
+                    pretending_primary_host="$suggested_primary_host"
+                    pretending_primary_port="$suggested_primary_port"
                 fi
             else
-                debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
-                pretending_primary_host="$suggested_primary_host"
-                pretending_primary_port="$suggested_primary_port"
+                warn "There were more than one primary when getting primary from node '$host:$port'"
+                pretending_primary_host="" && pretending_primary_port="" && break
             fi
-        else
-            warn "There were more than one primary when getting primary from node '$host:$port'"
-            pretending_primary_host="" && pretending_primary_port=""
-        fi
+        done
     fi
 
     echo "$pretending_primary_host"
@@ -224,8 +234,8 @@ repmgr_get_primary_node() {
     else
         if [[ -z "$upstream_host" ]]; then
             if ! node_is_the_same_like_repmgr_primary_variable; then
-              primary_host="$REPMGR_PRIMARY_HOST"
-              primary_port="$REPMGR_PRIMARY_PORT"
+                primary_host="$REPMGR_PRIMARY_HOST"
+                primary_port="$REPMGR_PRIMARY_PORT"
             fi
         else
             primary_host="$upstream_host"
@@ -295,7 +305,6 @@ repmgr_set_property() {
 
     replace_in_file "$conf_file" "^#*\s*${property}\s*=.*" "${property} = '${value}'" false
 }
-
 
 ########################
 # Create the repmgr user (with )
@@ -375,6 +384,7 @@ repmgr_inject_postgresql_configuration() {
     postgresql_set_property "log_filename" "postgresql.log"
     is_boolean_yes "$POSTGRESQL_ENABLE_TLS" && postgresql_configure_tls
     is_boolean_yes "$POSTGRESQL_ENABLE_TLS" && [[ -n $POSTGRESQL_TLS_CA_FILE ]] && postgresql_tls_auth_configuration
+    is_boolean_yes "$REPMGR_USE_PGREWIND" && postgresql_set_property "wal_log_hints" "on"
     cp "$POSTGRESQL_CONF_FILE" "${POSTGRESQL_MOUNTED_CONF_DIR}/postgresql.conf"
 }
 
@@ -395,7 +405,7 @@ repmgr_inject_pghba_configuration() {
         tls_auth=""
     fi
 
-    cat > "${POSTGRESQL_MOUNTED_CONF_DIR}/pg_hba.conf" << EOF
+    cat >"${POSTGRESQL_MOUNTED_CONF_DIR}/pg_hba.conf" <<EOF
 host     all            $REPMGR_USERNAME    0.0.0.0/0    trust
 host     $REPMGR_DATABASE         $REPMGR_USERNAME    0.0.0.0/0    trust
 host     $REPMGR_DATABASE         $REPMGR_USERNAME    ::/0    trust
@@ -474,7 +484,12 @@ repmgr_postgresql_configuration() {
 repmgr_generate_repmgr_config() {
     info "Preparing repmgr configuration..."
 
-    cat << EOF >> "${REPMGR_CONF_FILE}.tmp"
+    # If using a distinct WAL directory (${POSTGRESQL_DATA_DIR}/pg_wal is a symlink to an existing dir or $POSTGRESQL_INITDB_WAL_DIR is set a custom value during 1st boot),
+    # set the "--waldir" option accordingly
+    local -r waldir=$(postgresql_get_waldir)
+    local -r waldir_option=$([[ -n "$waldir" ]] && echo "--waldir=$waldir")
+
+    cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
 event_notification_command='${REPMGR_EVENTS_DIR}/router.sh %n %e %s "%t" "%d"'
 ssh_options='-o "StrictHostKeyChecking no" -v'
 use_replication_slots='${REPMGR_USE_REPLICATION_SLOTS}'
@@ -485,7 +500,7 @@ node_id=$(repmgr_get_node_id)
 node_name='${REPMGR_NODE_NAME}'
 location='${REPMGR_NODE_LOCATION}'
 conninfo='user=${REPMGR_USERNAME} $(repmgr_get_conninfo_password) host=${REPMGR_NODE_NETWORK_NAME} dbname=${REPMGR_DATABASE} port=${REPMGR_PORT_NUMBER} connect_timeout=${REPMGR_CONNECT_TIMEOUT}'
-failover='automatic'
+failover='${REPMGR_FAILOVER}'
 promote_command='$(repmgr_get_env_password) repmgr standby promote -f "${REPMGR_CONF_FILE}" --log-level DEBUG --verbose'
 follow_command='$(repmgr_get_env_password) repmgr standby follow -f "${REPMGR_CONF_FILE}" -W --log-level DEBUG --verbose'
 reconnect_attempts='${REPMGR_RECONNECT_ATTEMPTS}'
@@ -494,20 +509,62 @@ log_level='${REPMGR_LOG_LEVEL}'
 priority='${REPMGR_NODE_PRIORITY}'
 degraded_monitoring_timeout='${REPMGR_DEGRADED_MONITORING_TIMEOUT}'
 data_directory='${POSTGRESQL_DATA_DIR}'
-pg_ctl_options='-l $POSTGRESQL_LOG_FILE -o --config-file="$POSTGRESQL_CONF_FILE --external_pid_file=$POSTGRESQL_PID_FILE --hba_file=$POSTGRESQL_PGHBA_FILE"'
 async_query_timeout='${REPMGR_MASTER_RESPONSE_TIMEOUT}'
 pg_ctl_options='-o "--config-file=\"${POSTGRESQL_CONF_FILE}\" --external_pid_file=\"${POSTGRESQL_PID_FILE}\" --hba_file=\"${POSTGRESQL_PGHBA_FILE}\""'
+pg_basebackup_options='$waldir_option'
 EOF
+
+   if is_boolean_yes "$REPMGR_FENCE_OLD_PRIMARY"; then
+        cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_command='/bin/bash -c ". /opt/bitnami/scripts/libpostgresql.sh && . /opt/bitnami/scripts/postgresql-env.sh && postgresql_stop && kill -TERM 1"'
+EOF
+        if [[ -v REPMGR_CHILD_NODES_CHECK_INTERVAL ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_check_interval=${REPMGR_CHILD_NODES_CHECK_INTERVAL}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_connected_min_count=${REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_timeout=${REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT}
+EOF
+        fi
+    fi
+
+    if [[ "$REPMGR_FENCE_OLD_PRIMARY" == "true" ]]; then
+        cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_command='/bin/bash -c ". /opt/bitnami/scripts/libpostgresql.sh && . /opt/bitnami/scripts/postgresql-env.sh && postgresql_stop && kill -TERM 1"'
+EOF
+        if [[ -v REPMGR_CHILD_NODES_CHECK_INTERVAL ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_check_interval=${REPMGR_CHILD_NODES_CHECK_INTERVAL}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_connected_min_count=${REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_timeout=${REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT}
+EOF
+        fi
+    fi
 
     if [[ -f "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" ]]; then
         # remove from default the overrided keys, and append the desired conf
-        grep -xvFf "${REPMGR_CONF_FILE}.tmp" "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" | awk -F"=" '{print $1;}' > "${REPMGR_CONF_FILE}.keys" && grep -v -f "${REPMGR_CONF_FILE}.keys" "${REPMGR_CONF_FILE}.tmp" > "$REPMGR_CONF_FILE" && cat "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" >> "$REPMGR_CONF_FILE"
+        grep -xvFf "${REPMGR_CONF_FILE}.tmp" "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" | awk -F"=" '{print $1;}' >"${REPMGR_CONF_FILE}.keys" && grep -v -f "${REPMGR_CONF_FILE}.keys" "${REPMGR_CONF_FILE}.tmp" >"$REPMGR_CONF_FILE" && cat "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" >>"$REPMGR_CONF_FILE"
     else
         cp "${REPMGR_CONF_FILE}.tmp" "${REPMGR_CONF_FILE}"
     fi
 
     if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
-        echo "passfile='${REPMGR_PASSFILE_PATH}'" >> "$REPMGR_CONF_FILE"
+        echo "passfile='${REPMGR_PASSFILE_PATH}'" >>"$REPMGR_CONF_FILE"
     fi
 }
 
@@ -529,11 +586,11 @@ repmgr_wait_node() {
     local return_value=1
     local -i timeout=60
     local -i step=10
-    local -i max_tries=$(( timeout / step ))
+    local -i max_tries=$((timeout / step))
     local schemata
     info "Waiting for $name node..."
     debug "Wait for schema $REPMGR_DATABASE.repmgr on '${host}:${port}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
-    for ((i = 0 ; i <= timeout ; i+=step )); do
+    for ((i = 0; i <= timeout; i += step)); do
         local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
         if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
             debug "Host '${host}:${port}' is not accessible"
@@ -622,7 +679,7 @@ repmgr_rewind() {
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
       info "Rejoining node..."
       debug "Cloning data from primary node with force flag..."
-      repmgr_clone_primary
+        repmgr_clone_primary
     fi
 }
 
@@ -789,7 +846,7 @@ repmgr_initialize() {
             fi
         else
             repmgr_rewind || exit $?
-        fi
+    fi
     fi
 
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
@@ -798,8 +855,8 @@ repmgr_initialize() {
     fi
 
     postgresql_initialize
-    # Allow remote connections, required to register primary and standby nodes
-    postgresql_enable_remote_connections
+        # Allow remote connections, required to register primary and standby nodes
+        postgresql_enable_remote_connections
     if ! repmgr_is_file_external "postgresql.conf"; then
         # Configure port and restrict access to PostgreSQL (MD5)
         postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"

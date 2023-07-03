@@ -16,8 +16,7 @@ services:
       - REPMGR_PASSWORD=repmgrpassword
       - REPMGR_PRIMARY_HOST=pg-0
       - REPMGR_PRIMARY_PORT=5432
-      - REPMGR_WITNESS_NODE=pg-witness
-      - REPMGR_WITNESS_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-0:5432,pg-witness:5432,pg-1:5432
       - REPMGR_NODE_NAME=pg-0
       - REPMGR_NODE_NETWORK_NAME=pg-0
       - REPMGR_PORT_NUMBER=5432
@@ -39,8 +38,7 @@ services:
       - REPMGR_PASSWORD=repmgrpassword
       - REPMGR_PRIMARY_HOST=pg-0
       - REPMGR_PRIMARY_PORT=5432
-      - REPMGR_WITNESS_NODE=pg-witness
-      - REPMGR_WITNESS_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-0:5432,pg-witness:5432,pg-1:5432
       - REPMGR_NODE_NAME=pg-1
       - REPMGR_NODE_NETWORK_NAME=pg-1
       - REPMGR_PORT_NUMBER=5432
@@ -62,6 +60,7 @@ services:
       - REPMGR_PASSWORD=repmgrpassword
       - REPMGR_PRIMARY_HOST=pg-0
       - REPMGR_PRIMARY_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-0:5432,pg-witness:5432,pg-1:5432
       - REPMGR_NODE_NAME=pg-witness-9
       - REPMGR_NODE_NETWORK_NAME=pg-witness
       - REPMGR_PORT_NUMBER=5432
