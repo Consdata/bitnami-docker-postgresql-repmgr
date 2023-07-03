@@ -29,7 +29,7 @@ repmgr_get_node_id() {
     else
         num="${REPMGR_NODE_NAME##*-}"
         if [[ "$num" != "" ]]; then
-            num=$((num+1000))
+            num=$((num + REPMGR_NODE_ID_START_SEED))
             echo "$num"
         fi
     fi
@@ -410,6 +410,24 @@ EOF
 }
 
 ########################
+# Check if a given configuration file was mounted externally
+# Globals:
+#   REPMGR_MOUNTED_CONF_DIR
+# Arguments:
+#   $1 - Filename
+# Returns:
+#   1 if the file was mounted externally, 0 otherwise
+#########################
+repmgr_is_file_external() {
+    local -r filename=$1
+    if [[ -d "$REPMGR_MOUNTED_CONF_DIR" ]] && [[ -f "$REPMGR_MOUNTED_CONF_DIR"/"$filename" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+########################
 # Prepare PostgreSQL default configuration
 # Globals:
 #   POSTGRESQL_MOUNTED_CONF_DIR
@@ -423,22 +441,22 @@ EOF
 repmgr_postgresql_configuration() {
     info "Preparing PostgreSQL configuration..."
     # User injected custom configuration
-    if [[ -d "$REPMGR_MOUNTED_CONF_DIR" ]] && compgen -G "$REPMGR_MOUNTED_CONF_DIR"/* > /dev/null; then
+    if [[ -d "$REPMGR_MOUNTED_CONF_DIR" ]] && compgen -G "$REPMGR_MOUNTED_CONF_DIR"/* >/dev/null; then
         debug "User injected custom configuration detected!"
     fi
     ensure_dir_exists "$POSTGRESQL_MOUNTED_CONF_DIR"
-    if [[ -f "${REPMGR_MOUNTED_CONF_DIR}/postgresql.conf" ]]; then
+    if repmgr_is_file_external "postgresql.conf"; then
         cp "${REPMGR_MOUNTED_CONF_DIR}/postgresql.conf" "${POSTGRESQL_MOUNTED_CONF_DIR}/postgresql.conf"
     else
         repmgr_inject_postgresql_configuration
     fi
-    if [[ -f "${REPMGR_MOUNTED_CONF_DIR}/pg_hba.conf" ]]; then
+    if repmgr_is_file_external "pg_hba.conf"; then
         cp "${REPMGR_MOUNTED_CONF_DIR}/pg_hba.conf" "${POSTGRESQL_MOUNTED_CONF_DIR}/pg_hba.conf"
     else
         repmgr_inject_pghba_configuration
     fi
     if [[ "$REPMGR_USE_PASSFILE" = "true" ]] && [[ ! -f "${REPMGR_PASSFILE_PATH}" ]]; then
-        echo "*:*:*:${REPMGR_USERNAME}:${REPMGR_PASSWORD}" > "${REPMGR_PASSFILE_PATH}"
+        echo "*:*:*:${REPMGR_USERNAME}:${REPMGR_PASSWORD}" >"${REPMGR_PASSFILE_PATH}"
         chmod 600 "${REPMGR_PASSFILE_PATH}"
     fi
 }
@@ -640,43 +658,6 @@ repmgr_unregister_standby() {
 }
 
 ########################
-# Standby follow.
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_standby_follow() {
-    info "Running standby follow..."
-    local -r flags=("standby" "follow" "-f" "$REPMGR_CONF_FILE" "-W" "--log-level" "DEBUG" "--verbose")
-
-    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
-        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-    else
-        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-    fi
-
-}
-
-########################
-# Register a node as standby
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_register_standby() {
-    info "Registering Standby node..."
-    local -r flags=("standby" "register" "-f" "$REPMGR_CONF_FILE" "--force" "--verbose")
-
-    debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-}
-
-########################
 # Unregister witness
 # Globals:
 #   REPMGR_*
@@ -717,6 +698,43 @@ repmgr_register_witness() {
     else
         PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
     fi
+}
+
+########################
+# Standby follow.
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_standby_follow() {
+    info "Running standby follow..."
+    local -r flags=("standby" "follow" "-f" "$REPMGR_CONF_FILE" "-W" "--log-level" "DEBUG" "--verbose")
+
+    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
+        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+    else
+        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+    fi
+
+}
+
+########################
+# Register a node as standby
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_register_standby() {
+    info "Registering Standby node..."
+    local -r flags=("standby" "register" "-f" "$REPMGR_CONF_FILE" "--force" "--verbose")
+
+    debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
 }
 
 ########################
