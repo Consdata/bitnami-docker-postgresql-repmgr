@@ -569,31 +569,26 @@ EOF
 }
 
 ########################
-# Waits until the node responds
+# Waits until the primary node responds
 # Globals:
 #   REPMGR_*
 # Arguments:
-#   name
-#   host
-#   port
+#   None
 # Returns:
 #   None
 #########################
-repmgr_wait_node() {
-    local -r name="$1"
-    local -r host="$2"
-    local -r port="$3"
+repmgr_wait_primary_node() {
     local return_value=1
     local -i timeout=60
     local -i step=10
     local -i max_tries=$((timeout / step))
     local schemata
-    info "Waiting for $name node..."
-    debug "Wait for schema $REPMGR_DATABASE.repmgr on '${host}:${port}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
+    info "Waiting for primary node..."
+    debug "Wait for schema $REPMGR_DATABASE.repmgr on '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
     for ((i = 0; i <= timeout; i += step)); do
         local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
-        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-            debug "Host '${host}:${port}' is not accessible"
+        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
+            debug "Host '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}' is not accessible"
         else
             if [[ $schemata -ne 1 ]]; then
                 debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
@@ -605,34 +600,6 @@ repmgr_wait_node() {
         sleep "$step"
     done
     return $return_value
-}
-
-########################
-# Waits until the primary node responds
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_wait_primary_node() {
-    repmgr_wait_node "primary" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT"
-    return $?
-}
-
-########################
-# Waits until the witness node responds
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_wait_witness_node() {
-    repmgr_wait_node "witness" "$REPMGR_WITNESS_NODE" "$REPMGR_WITNESS_PORT"
-    return $?
 }
 
 ########################
