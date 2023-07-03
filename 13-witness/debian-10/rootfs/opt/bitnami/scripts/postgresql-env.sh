@@ -435,7 +435,6 @@ export REPMGR_CURRENT_PRIMARY_HOST=""
 export REPMGR_CURRENT_PRIMARY_PORT="$REPMGR_PRIMARY_PORT"
 export STANDBY_ALREADY_CLONED_FILENAME=".standbyAlreadyCloned"
 export FORCE_UNSAFE_CLONE_FILENAME=".forceUnsafeClone"
-export FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME=".forceRunPrimaryWithoutWitness"
 
 # Credentials (Replication Manager)
 export REPMGR_USERNAME="${REPMGR_USERNAME:-repmgr}"

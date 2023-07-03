@@ -616,6 +616,9 @@ repmgr_clone_primary() {
 #   None
 #########################
 repmgr_rewind() {
+    info "Rejoining node..."
+
+    ensure_dir_exists "$POSTGRESQL_DATA_DIR"
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
       info "Rejoining node..."
       debug "Cloning data from primary node with force flag..."
@@ -777,16 +780,6 @@ repmgr_initialize() {
     ensure_dir_exists "$REPMGR_LOCK_DIR"
     am_i_root && chown "$POSTGRESQL_DAEMON_USER:$POSTGRESQL_DAEMON_GROUP" "$REPMGR_LOCK_DIR"
 
-    if [[ "$REPMGR_ROLE" != "witness" ]]; then
-        if ! node_is_the_same_like_repmgr_primary_variable ||
-              ! is_dir_empty "$POSTGRESQL_DATA_DIR" &&
-              [[ ! -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
-          repmgr_wait_witness_node || exit 1
-        else
-          debug "Skipping waiting on witness"
-        fi
-    fi
-
     if [[ "$REPMGR_ROLE" = "standby" ]]; then
         repmgr_wait_primary_node || exit 1
         # TODO: better way to detect it's a 1st boot
@@ -797,10 +790,6 @@ repmgr_initialize() {
         else
             repmgr_rewind || exit $?
         fi
-    fi
-
-    if [[ "$REPMGR_ROLE" = "witness" ]]; then
-        repmgr_wait_primary_node || exit 1
     fi
 
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
@@ -866,11 +855,6 @@ repmgr_initialize() {
         repmgr_create_repmgr_db
         repmgr_unregister_witness
         repmgr_register_witness
-    fi
-
-    if [[ -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
-        info "$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME exists, deleting..."
-        rm -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME"
     fi
     info "Repmgr initialized successfully"
 }
