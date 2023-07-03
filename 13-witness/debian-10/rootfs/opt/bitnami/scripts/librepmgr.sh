@@ -613,6 +613,13 @@ repmgr_wait_primary_node() {
 #   None
 #########################
 repmgr_clone_primary() {
+    # Clears WAL directory if existing (pg_basebackup requires the WAL dir to be empty)
+    local -r waldir=$(postgresql_get_waldir)
+    if [[ -d "$waldir" ]]; then
+        info "Deleting existing WAL directory $waldir..."
+        rm -rf "$waldir" && ensure_dir_exists "$waldir"
+    fi
+
     info "Cloning data from primary node..."
     local flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint")
 
@@ -749,7 +756,7 @@ repmgr_standby_follow() {
 }
 
 ########################
-# Register a node as standby
+# Resgister a node as standby
 # Globals:
 #   REPMGR_*
 # Arguments:
@@ -789,9 +796,6 @@ repmgr_upgrade_extension() {
 #   None
 #########################
 repmgr_initialize() {
-    # Set the environment variables for the node's role
-    eval "$(repmgr_set_role)"
-
     # Configure postgres
     export POSTGRESQL_MASTER_HOST="$REPMGR_CURRENT_PRIMARY_HOST"
     export POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
@@ -822,8 +826,8 @@ repmgr_initialize() {
     fi
 
     postgresql_initialize
-        # Allow remote connections, required to register primary and standby nodes
-        postgresql_enable_remote_connections
+    # Allow remote connections, required to register primary and standby nodes
+    postgresql_enable_remote_connections
     if ! repmgr_is_file_external "postgresql.conf"; then
         # Configure port and restrict access to PostgreSQL (MD5)
         postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
