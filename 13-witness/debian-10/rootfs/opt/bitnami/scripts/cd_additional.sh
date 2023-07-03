@@ -106,3 +106,20 @@ repmgr_follow_primary() {
         PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
     fi
 }
+
+########################
+# Check node is the same like $REPMGR_PRIMARY_HOST $REPMGR_PRIMARY_PORT
+# Arguments:
+#   None
+# Returns:
+#   Boolean
+#########################
+node_is_the_same_like_repmgr_primary_variable() {
+    debug "Primary host: '${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}'"
+    debug "Current host: '${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}'"
+    if [[ "${REPMGR_PRIMARY_HOST}:${REPMGR_PRIMARY_PORT}" = "${REPMGR_NODE_NETWORK_NAME}:${REPMGR_PORT_NUMBER}" ]]; then
+      true
+    else
+      false
+    fi
+}
