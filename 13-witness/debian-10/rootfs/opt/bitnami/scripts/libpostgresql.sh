@@ -401,34 +401,9 @@ postgresql_configure_replication_parameters() {
 #   None
 #########################
 postgresql_configure_synchronous_replication() {
-    local replication_nodes=""
-    local synchronous_standby_names=""
-    info "Configuring synchronous_replication"
-
-    # Check for comma separate values
-    # When using repmgr, POSTGRESQL_CLUSTER_APP_NAME will contain the list of nodes to be synchronous
-    # This list need to cleaned from other things but node names.
-    if [[ "$POSTGRESQL_CLUSTER_APP_NAME" == *","* ]]; then
-        read -r -a nodes <<<"$(tr ',;' ' ' <<<"${POSTGRESQL_CLUSTER_APP_NAME}")"
-        for node in "${nodes[@]}"; do
-            [[ "$node" =~ ^(([^:/?#]+):)?// ]] || node="tcp://${node}"
-
-            # repmgr is only using the first segment of the FQDN as the application name
-            host="$(parse_uri "$node" 'host' | awk -F. '{print $1}')"
-            replication_nodes="${replication_nodes}${replication_nodes:+,}\"${host}\""
-        done
-    else
-        replication_nodes="\"${POSTGRESQL_CLUSTER_APP_NAME}\""
-    fi
-
     if ((POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS > 0)); then
-        synchronous_standby_names="${POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS} (${replication_nodes})"
-        if [[ -n "$POSTGRESQL_SYNCHRONOUS_REPLICAS_MODE" ]]; then
-            synchronous_standby_names="${POSTGRESQL_SYNCHRONOUS_REPLICAS_MODE} ${synchronous_standby_names}"
-        fi
-
         postgresql_set_property "synchronous_commit" "$POSTGRESQL_SYNCHRONOUS_COMMIT_MODE"
-        postgresql_set_property "synchronous_standby_names" "$synchronous_standby_names"
+        postgresql_set_property "synchronous_standby_names" "${POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS} (\"${POSTGRESQL_CLUSTER_APP_NAME}\")"
     fi
 }
 
@@ -672,9 +647,6 @@ postgresql_initialize() {
 
     # Delete conf files generated on first run
     rm -f "$POSTGRESQL_DATA_DIR"/postgresql.conf "$POSTGRESQL_DATA_DIR"/pg_hba.conf
-
-    # Stop postgresql
-    postgresql_stop
 }
 
 ########################
@@ -932,11 +904,9 @@ postgresql_slave_init_db() {
 #########################
 postgresql_configure_recovery() {
     info "Setting up streaming replication slave..."
-
-    local -r escaped_password="${POSTGRESQL_REPLICATION_PASSWORD//\&/\\&}"
     local -r psql_major_version="$(postgresql_get_major_version)"
     if ((psql_major_version >= 12)); then
-        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${escaped_password} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_CONF_FILE"
+        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_CONF_FILE"
         postgresql_set_property "promote_trigger_file" "/tmp/postgresql.trigger.${POSTGRESQL_MASTER_PORT_NUMBER}" "$POSTGRESQL_CONF_FILE"
         touch "$POSTGRESQL_DATA_DIR"/standby.signal
     else
@@ -944,7 +914,7 @@ postgresql_configure_recovery() {
         chmod 600 "$POSTGRESQL_RECOVERY_FILE"
         am_i_root && chown "$POSTGRESQL_DAEMON_USER:$POSTGRESQL_DAEMON_GROUP" "$POSTGRESQL_RECOVERY_FILE"
         postgresql_set_property "standby_mode" "on" "$POSTGRESQL_RECOVERY_FILE"
-        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${escaped_password} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_RECOVERY_FILE"
+        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_RECOVERY_FILE"
         postgresql_set_property "trigger_file" "/tmp/postgresql.trigger.${POSTGRESQL_MASTER_PORT_NUMBER}" "$POSTGRESQL_RECOVERY_FILE"
     fi
 }
@@ -1202,7 +1172,7 @@ postgresql_ensure_user_exists() {
 
     local -a postgresql_execute_cmd=("postgresql_execute")
     [[ -n "$db_host" && -n "$db_port" ]] && postgresql_execute_cmd=("postgresql_remote_execute" "$db_host" "$db_port")
-    local -a postgresql_execute_flags=("postgres" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
+    local -a postgresql_execute_flags=("" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
 
     "${postgresql_execute_cmd[@]}" "${postgresql_execute_flags[@]}" <<EOF
 DO
@@ -1236,7 +1206,7 @@ postgresql_ensure_user_has_database_privileges() {
 
     local -a postgresql_execute_cmd=("postgresql_execute")
     [[ -n "$db_host" && -n "$db_port" ]] && postgresql_execute_cmd=("postgresql_remote_execute" "$db_host" "$db_port")
-    local -a postgresql_execute_flags=("postgres" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
+    local -a postgresql_execute_flags=("" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
 
     debug "Providing privileges to username ${user} on database ${database}"
     "${postgresql_execute_cmd[@]}" "${postgresql_execute_flags[@]}" <<EOF
@@ -1290,7 +1260,7 @@ postgresql_ensure_database_exists() {
 
     local -a postgresql_execute_cmd=("postgresql_execute")
     [[ -n "$db_host" && -n "$db_port" ]] && postgresql_execute_cmd=("postgresql_remote_execute" "$db_host" "$db_port")
-    local -a postgresql_execute_flags=("postgres" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
+    local -a postgresql_execute_flags=("" "$(get_env_var_value POSTGRES_USER)" "$(get_env_var_value POSTGRES_PASSWORD)")
 
     "${postgresql_execute_cmd[@]}" "${postgresql_execute_flags[@]}" <<EOF
 SELECT 'CREATE DATABASE "${database}"'
