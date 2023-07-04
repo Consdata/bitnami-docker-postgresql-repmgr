@@ -165,7 +165,7 @@ repmgr_get_upstream_node() {
             if [[ -n "$pretending_primary_host" ]]; then
                 if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
                     warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
-                pretending_primary_host="" && pretending_primary_port=""
+                    pretending_primary_host="" && pretending_primary_port=""
                 fi
             else
                 debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
@@ -174,7 +174,7 @@ repmgr_get_upstream_node() {
             fi
         else
             warn "There were more than one primary when getting primary from node '$host:$port'"
-        pretending_primary_host="" && pretending_primary_port=""
+          pretending_primary_host="" && pretending_primary_port=""
         fi
     fi
 
