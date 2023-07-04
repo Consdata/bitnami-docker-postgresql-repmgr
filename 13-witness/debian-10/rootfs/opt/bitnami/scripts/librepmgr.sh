@@ -648,6 +648,47 @@ repmgr_unregister_standby() {
 }
 
 ########################
+# Unregister witness
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_unregister_witness() {
+    info "Unregistering witness node..."
+    local -r flags=("-f" "$REPMGR_CONF_FILE" "witness" "unregister" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "--port" "$REPMGR_CURRENT_PRIMARY_PORT" "--verbose")
+
+    # The command below can fail when the node doesn't exist yet
+    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
+        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}" || true
+    else
+        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}" || true
+    fi
+}
+
+########################
+# Register a node as witness
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_register_witness() {
+    info "Registering Witness node..."
+    local -r flags=("witness" "register" "-f" "$REPMGR_CONF_FILE" "--host" "$REPMGR_CURRENT_PRIMARY_HOST" "--port" "$REPMGR_CURRENT_PRIMARY_PORT" "--force" "--verbose")
+
+    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
+        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+    else
+        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
+    fi
+}
+
+########################
 # Standby follow.
 # Globals:
 #   REPMGR_*
@@ -682,26 +723,6 @@ repmgr_register_standby() {
     local -r flags=("standby" "register" "-f" "$REPMGR_CONF_FILE" "--force" "--verbose")
 
     debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-}
-
-########################
-# Register a node as witness
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_register_witness() {
-    info "Registering Witness node..."
-    local -r flags=("witness" "register" "-f" "$REPMGR_CONF_FILE" "--host" "$REPMGR_CURRENT_PRIMARY_HOST" "--port" "$REPMGR_CURRENT_PRIMARY_PORT" "--force" "--verbose")
-
-    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
-        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-    else
-        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
-    fi
 }
 
 ########################
