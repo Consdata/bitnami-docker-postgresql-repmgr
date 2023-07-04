@@ -17,7 +17,7 @@ set -o pipefail
 # Load PostgreSQL & repmgr environment variables
 . /opt/bitnami/scripts/postgresql-env.sh
 
-readonly repmgr_flags=("-f" "$REPMGR_CONF_FILE" "--daemonize=false")
+readonly repmgr_flags=("--pid-file=$REPMGR_PID_FILE" "-f" "$REPMGR_CONF_FILE" "--daemonize=false")
 # shellcheck disable=SC2155
 readonly repmgr_cmd=$(command -v repmgrd)
 
@@ -25,7 +25,7 @@ postgresql_start_bg true
 info "** Starting repmgrd **"
 # TODO: properly test running the container as root
 if am_i_root; then
-    exec_as_user "$POSTGRESQL_DAEMON_USER" "$repmgr_cmd" "${repmgr_flags[@]}"
+    exec gosu "$POSTGRESQL_DAEMON_USER" "$repmgr_cmd" "${repmgr_flags[@]}"
 else
     exec "$repmgr_cmd" "${repmgr_flags[@]}"
 fi
