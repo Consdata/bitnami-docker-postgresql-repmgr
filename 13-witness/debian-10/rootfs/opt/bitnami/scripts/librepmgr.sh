@@ -11,6 +11,7 @@
 . /opt/bitnami/scripts/libos.sh
 . /opt/bitnami/scripts/libvalidations.sh
 . /opt/bitnami/scripts/libnet.sh
+. /opt/bitnami/scripts/cd_additional.sh
 
 ########################
 # Get repmgr node id
