@@ -153,29 +153,29 @@ repmgr_get_upstream_node() {
         host="$REPMGR_WITNESS_NODE"
         port="${REPMGR_WITNESS_PORT:-5432}"
         debug "Checking witness '$host:$port'..."
-            local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
-            if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-                debug "Skipping: failed to get primary from the node '$host:$port'!"
-            elif [[ -z "$primary_conninfo" ]]; then
-                debug "Skipping: failed to get information about primary nodes!"
-            elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
-                suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
-                suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
-                debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
-                if [[ -n "$pretending_primary_host" ]]; then
-                    if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
-                        warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
-                    pretending_primary_host="" && pretending_primary_port=""
-                    fi
-                else
-                    debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
-                    pretending_primary_host="$suggested_primary_host"
-                    pretending_primary_port="$suggested_primary_port"
+        local query="SELECT conninfo FROM repmgr.show_nodes WHERE (upstream_node_name IS NULL OR upstream_node_name = '') AND active=true"
+        if ! primary_conninfo="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
+            debug "Skipping: failed to get primary from the node '$host:$port'!"
+        elif [[ -z "$primary_conninfo" ]]; then
+            debug "Skipping: failed to get information about primary nodes!"
+        elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
+            suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
+            suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
+            debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
+            if [[ -n "$pretending_primary_host" ]]; then
+                if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
+                    warn "Conflict of pretending primary role nodes (previously: '${pretending_primary_host}:${pretending_primary_port}', now: '${suggested_primary_host}:${suggested_primary_port}')"
+                pretending_primary_host="" && pretending_primary_port=""
                 fi
             else
-                warn "There were more than one primary when getting primary from node '$host:$port'"
-            pretending_primary_host="" && pretending_primary_port=""
+                debug "Pretending primary set to '${suggested_primary_host}:${suggested_primary_port}'!"
+                pretending_primary_host="$suggested_primary_host"
+                pretending_primary_port="$suggested_primary_port"
             fi
+        else
+            warn "There were more than one primary when getting primary from node '$host:$port'"
+        pretending_primary_host="" && pretending_primary_port=""
+        fi
     fi
 
     echo "$pretending_primary_host"
