@@ -174,7 +174,7 @@ repmgr_get_upstream_node() {
             fi
         else
             warn "There were more than one primary when getting primary from node '$host:$port'"
-          pretending_primary_host="" && pretending_primary_port=""
+            pretending_primary_host="" && pretending_primary_port=""
         fi
     fi
 
@@ -247,13 +247,13 @@ repmgr_set_role() {
     local primary_port=""
 
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
-    local primary_node
-    readarray -t primary_node < <(repmgr_get_primary_node)
-    primary_host=${primary_node[0]}
-    primary_port=${primary_node[1]:-$REPMGR_PRIMARY_PORT}
+        local primary_node
+        readarray -t primary_node < <(repmgr_get_primary_node)
+        primary_host=${primary_node[0]}
+        primary_port=${primary_node[1]:-$REPMGR_PRIMARY_PORT}
     fi
 
-      if [[ -z "$primary_host" ]]; then
+    if [[ -z "$primary_host" ]]; then
         info "There are no nodes with primary role. Assuming the primary role ($REPMGR_PRIMARY_HOST:$REPMGR_PRIMARY_PORT)..."
         primary_host="${REPMGR_PRIMARY_HOST}"
         primary_port="${REPMGR_PRIMARY_PORT}"
@@ -609,9 +609,9 @@ repmgr_clone_primary() {
 #########################
 repmgr_rewind() {
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
-    info "Rejoining node..."
+      info "Rejoining node..."
       debug "Cloning data from primary node with force flag..."
-        repmgr_clone_primary
+      repmgr_clone_primary
     fi
 }
 
@@ -785,7 +785,7 @@ repmgr_initialize() {
             fi
         else
             repmgr_rewind || exit $?
-    fi
+        fi
     fi
 
     if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
@@ -794,15 +794,15 @@ repmgr_initialize() {
     fi
 
     postgresql_initialize
-        # Allow remote connections, required to register primary and standby nodes
-        postgresql_enable_remote_connections
-        # Configure port and restrict access to PostgreSQL (MD5)
-        postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
+    # Allow remote connections, required to register primary and standby nodes
+    postgresql_enable_remote_connections
+    # Configure port and restrict access to PostgreSQL (MD5)
+    postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 
     #postgresql_configure_replication_parameters
     #postgresql_configure_fsync
 
-        is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
+    is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
     debug "Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     if [[ "$REPMGR_NODE_TYPE" = "witness" ]]; then
       if [[ ! -f "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME" ]]; then
