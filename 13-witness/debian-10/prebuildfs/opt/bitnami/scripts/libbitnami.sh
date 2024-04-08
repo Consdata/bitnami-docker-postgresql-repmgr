@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
 #
 # Bitnami custom library
 
@@ -40,12 +42,13 @@ print_welcome_page() {
 #   None
 #########################
 print_image_welcome_page() {
-    local github_url="https://github.com/bitnami/bitnami-docker-${BITNAMI_APP_NAME}"
+    local github_url="https://github.com/bitnami/containers"
 
-    log ""
-    log "${BOLD}Welcome to the Bitnami ${BITNAMI_APP_NAME} container${RESET}"
-    log "Subscribe to project updates by watching ${BOLD}${github_url}${RESET}"
-    log "Submit issues and feature requests at ${BOLD}${github_url}/issues${RESET}"
-    log ""
+    info ""
+    info "${BOLD}Welcome to the Bitnami ${BITNAMI_APP_NAME} container${RESET}"
+    info "Subscribe to project updates by watching ${BOLD}${github_url}${RESET}"
+    info "Submit issues and feature requests at ${BOLD}${github_url}/issues${RESET}"
+    info "Upgrade to Tanzu Application Catalog for production environments to access custom-configured and pre-packaged software components. Gain enhanced features, including Software Bill of Materials (SBOM), CVE scan result reports, and VEX documents. To learn more, visit ${BOLD}https://bitnami.com/enterprise${RESET}"
+    info ""
 }
 

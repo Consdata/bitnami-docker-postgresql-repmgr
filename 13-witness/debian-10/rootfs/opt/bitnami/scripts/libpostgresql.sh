@@ -714,7 +714,7 @@ postgresql_stop() {
         info "Stopping PostgreSQL..."
         debug "Executing: ${cmd[@]}"
         if am_i_root; then
-            gosu "$POSTGRESQL_DAEMON_USER" "${cmd[@]}"
+            run_as_user "$POSTGRESQL_DAEMON_USER" "${cmd[@]}"
         else
             "${cmd[@]}"
         fi
@@ -739,7 +739,7 @@ postgresql_start_bg() {
     fi
     local pg_ctl_cmd=()
     if am_i_root; then
-        pg_ctl_cmd+=("gosu" "$POSTGRESQL_DAEMON_USER")
+        pg_ctl_cmd+=("run_as_user" "$POSTGRESQL_DAEMON_USER")
     fi
     pg_ctl_cmd+=("$POSTGRESQL_BIN_DIR"/pg_ctl)
     debug "Executing: $pg_ctl_cmd start ${pg_ctl_flags[@]}"
@@ -816,7 +816,7 @@ postgresql_master_init_db() {
     fi
     local initdb_cmd=()
     if am_i_root; then
-        initdb_cmd+=("gosu" "$POSTGRESQL_DAEMON_USER")
+        initdb_cmd+=("run_as_user" "$POSTGRESQL_DAEMON_USER")
     fi
     initdb_cmd+=("$POSTGRESQL_BIN_DIR/initdb")
     if [[ -n "${initdb_args[*]:-}" ]]; then
@@ -847,7 +847,7 @@ postgresql_slave_init_db() {
     local -r check_args=("-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "postgres")
     local check_cmd=()
     if am_i_root; then
-        check_cmd=("gosu" "$POSTGRESQL_DAEMON_USER")
+        check_cmd=("run_as_user" "$POSTGRESQL_DAEMON_USER")
     fi
     check_cmd+=("$POSTGRESQL_BIN_DIR"/pg_isready)
     local ready_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
@@ -865,7 +865,7 @@ postgresql_slave_init_db() {
     local -r backup_args=("-D" "$POSTGRESQL_DATA_DIR" "-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-X" "stream" "-w" "-v" "-P")
     local backup_cmd=()
     if am_i_root; then
-        backup_cmd+=("gosu" "$POSTGRESQL_DAEMON_USER")
+        backup_cmd+=("run_as_user" "$POSTGRESQL_DAEMON_USER")
     fi
     backup_cmd+=("$POSTGRESQL_BIN_DIR"/pg_basebackup)
     local replication_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
