@@ -31,7 +31,7 @@ repmgr_get_node_id() {
     else
         num="${REPMGR_NODE_NAME##*-}"
         if [[ "$num" != "" ]]; then
-            num=$((num+1000))
+            num=$((num + REPMGR_NODE_ID_START_SEED))
             echo "$num"
         fi
     fi
@@ -120,11 +120,19 @@ repmgr_validate() {
         fi
     fi
 
+    if [[ -z "$REPMGR_NODE_TYPE" ]] || ! [[ "$REPMGR_NODE_TYPE" =~ ^(database|witness)$ ]]; then
+        print_validation_error "Set the environment variable REPMGR_NODE_TYPE to 'data' or 'witness'."
+    fi
+
     if ! is_yes_no_value "$REPMGR_PGHBA_TRUST_ALL"; then
         print_validation_error "The allowed values for REPMGR_PGHBA_TRUST_ALL are: yes or no."
     fi
     if ! is_yes_no_value "$REPMGR_UPGRADE_EXTENSION"; then
         print_validation_error "The allowed values for REPMGR_UPGRADE_EXTENSION are: yes or no."
+    fi
+
+    if ! [[ "$REPMGR_FAILOVER" =~ ^(automatic|manual)$ ]]; then
+        print_validation_error "The allowed values for REPMGR_FAILOVER are: automatic or manual."
     fi
 
     [[ "$error_code" -eq 0 ]] || exit "$error_code"
@@ -367,6 +375,7 @@ repmgr_inject_postgresql_configuration() {
     postgresql_set_property "log_filename" "postgresql.log"
     is_boolean_yes "$POSTGRESQL_ENABLE_TLS" && postgresql_configure_tls
     is_boolean_yes "$POSTGRESQL_ENABLE_TLS" && [[ -n $POSTGRESQL_TLS_CA_FILE ]] && postgresql_tls_auth_configuration
+    is_boolean_yes "$REPMGR_USE_PGREWIND" && postgresql_set_property "wal_log_hints" "on"
     cp "$POSTGRESQL_CONF_FILE" "${POSTGRESQL_MOUNTED_CONF_DIR}/postgresql.conf"
 }
 
@@ -466,6 +475,11 @@ repmgr_postgresql_configuration() {
 repmgr_generate_repmgr_config() {
     info "Preparing repmgr configuration..."
 
+    # If using a distinct WAL directory (${POSTGRESQL_DATA_DIR}/pg_wal is a symlink to an existing dir or $POSTGRESQL_INITDB_WAL_DIR is set a custom value during 1st boot),
+    # set the "--waldir" option accordingly
+    local -r waldir=$(postgresql_get_waldir)
+    local -r waldir_option=$([[ -n "$waldir" ]] && echo "--waldir=$waldir")
+
     cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
 event_notification_command='${REPMGR_EVENTS_DIR}/router.sh %n %e %s "%t" "%d"'
 ssh_options='-o "StrictHostKeyChecking no" -v'
@@ -477,7 +491,7 @@ node_id=$(repmgr_get_node_id)
 node_name='${REPMGR_NODE_NAME}'
 location='${REPMGR_NODE_LOCATION}'
 conninfo='user=${REPMGR_USERNAME} $(repmgr_get_conninfo_password) host=${REPMGR_NODE_NETWORK_NAME} dbname=${REPMGR_DATABASE} port=${REPMGR_PORT_NUMBER} connect_timeout=${REPMGR_CONNECT_TIMEOUT}'
-failover='automatic'
+failover='${REPMGR_FAILOVER}'
 promote_command='$(repmgr_get_env_password) repmgr standby promote -f "${REPMGR_CONF_FILE}" --log-level DEBUG --verbose'
 follow_command='$(repmgr_get_env_password) repmgr standby follow -f "${REPMGR_CONF_FILE}" -W --log-level DEBUG --verbose'
 reconnect_attempts='${REPMGR_RECONNECT_ATTEMPTS}'
@@ -486,10 +500,52 @@ log_level='${REPMGR_LOG_LEVEL}'
 priority='${REPMGR_NODE_PRIORITY}'
 degraded_monitoring_timeout='${REPMGR_DEGRADED_MONITORING_TIMEOUT}'
 data_directory='${POSTGRESQL_DATA_DIR}'
-pg_ctl_options='-l $POSTGRESQL_LOG_FILE -o --config-file="$POSTGRESQL_CONF_FILE --external_pid_file=$POSTGRESQL_PID_FILE --hba_file=$POSTGRESQL_PGHBA_FILE"'
 async_query_timeout='${REPMGR_MASTER_RESPONSE_TIMEOUT}'
-pg_ctl_options='-o "--config-file=\"${POSTGRESQL_CONF_FILE}\" --external_pid_file=\"${POSTGRESQL_PID_FILE}\" --hba_file=\"${POSTGRESQL_PGHBA_FILE}\""'
+pg_ctl_options='-l $POSTGRESQL_LOG_FILE -o "--config-file=\"${POSTGRESQL_CONF_FILE}\" --external_pid_file=\"${POSTGRESQL_PID_FILE}\" --hba_file=\"${POSTGRESQL_PGHBA_FILE}\""'
+pg_basebackup_options='$waldir_option'
 EOF
+
+   if is_boolean_yes "$REPMGR_FENCE_OLD_PRIMARY"; then
+        cat <<EOF >>"${REPMGR_CONF_FILE}.tmp" 
+child_nodes_disconnect_command='/bin/bash -c ". /opt/bitnami/scripts/libpostgresql.sh && . /opt/bitnami/scripts/postgresql-env.sh && postgresql_stop && kill -TERM 1"'
+EOF
+        if [[ -v REPMGR_CHILD_NODES_CHECK_INTERVAL ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_check_interval=${REPMGR_CHILD_NODES_CHECK_INTERVAL}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_connected_min_count=${REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_timeout=${REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT}
+EOF
+        fi
+    fi
+
+    if [[ "$REPMGR_FENCE_OLD_PRIMARY" == "true" ]]; then
+        cat <<EOF >>"${REPMGR_CONF_FILE}.tmp" 
+child_nodes_disconnect_command='/bin/bash -c ". /opt/bitnami/scripts/libpostgresql.sh && . /opt/bitnami/scripts/postgresql-env.sh && postgresql_stop && kill -TERM 1"'
+EOF
+        if [[ -v REPMGR_CHILD_NODES_CHECK_INTERVAL ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_check_interval=${REPMGR_CHILD_NODES_CHECK_INTERVAL}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_connected_min_count=${REPMGR_CHILD_NODES_CONNECTED_MIN_COUNT}
+EOF
+        fi
+        if [[ -v REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT ]]; then
+            cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
+child_nodes_disconnect_timeout=${REPMGR_CHILD_NODES_DISCONNECT_TIMEOUT}
+EOF
+        fi
+    fi
 
     if [[ -f "${REPMGR_MOUNTED_CONF_DIR}/repmgr.conf" ]]; then
         # remove from default the overrided keys, and append the desired conf
