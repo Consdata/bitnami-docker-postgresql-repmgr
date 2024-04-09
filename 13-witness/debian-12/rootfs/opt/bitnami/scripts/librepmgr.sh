@@ -501,7 +501,7 @@ priority='${REPMGR_NODE_PRIORITY}'
 degraded_monitoring_timeout='${REPMGR_DEGRADED_MONITORING_TIMEOUT}'
 data_directory='${POSTGRESQL_DATA_DIR}'
 async_query_timeout='${REPMGR_MASTER_RESPONSE_TIMEOUT}'
-pg_ctl_options='-l $POSTGRESQL_LOG_FILE -o "--config-file=\"${POSTGRESQL_CONF_FILE}\" --external_pid_file=\"${POSTGRESQL_PID_FILE}\" --hba_file=\"${POSTGRESQL_PGHBA_FILE}\""'
+pg_ctl_options='-o "--config-file=\"${POSTGRESQL_CONF_FILE}\" --external_pid_file=\"${POSTGRESQL_PID_FILE}\" --hba_file=\"${POSTGRESQL_PGHBA_FILE}\""'
 pg_basebackup_options='$waldir_option'
 EOF
 
@@ -715,7 +715,7 @@ repmgr_standby_follow() {
 }
 
 ########################
-# Register a node as standby
+# Resgister a node as standby
 # Globals:
 #   REPMGR_*
 # Arguments:
