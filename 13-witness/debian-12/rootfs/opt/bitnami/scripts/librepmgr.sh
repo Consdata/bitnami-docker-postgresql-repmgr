@@ -584,14 +584,15 @@ repmgr_wait_primary_node() {
 #   None
 #########################
 repmgr_clone_primary() {
-    info "Cloning data from primary node..."
-    local flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint")
-
-    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
-      rm "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" || exit $?
-      flags+=( "--force" )
-      info "USE FORCE FLAG IN CLONE!!!"
+    # Clears WAL directory if existing (pg_basebackup requires the WAL dir to be empty)
+    local -r waldir=$(postgresql_get_waldir)
+    if [[ -d "$waldir" ]]; then
+        info "Deleting existing WAL directory $waldir..."
+        rm -rf "$waldir" && ensure_dir_exists "$waldir"
     fi
+
+    info "Cloning data from primary node..."
+    local -r flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "$REPMGR_DATABASE" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint" "--force")
 
     if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
         PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
@@ -599,6 +600,26 @@ repmgr_clone_primary() {
         PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${REPMGR_BIN_DIR}/repmgr" "${flags[@]}"
     fi
     date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
+}
+
+########################
+# Execute pg_rewind to get data from the primary node
+# Globals:
+#   REPMGR_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+repmgr_pgrewind() {
+    info "Running pg_rewind data to primary node..."
+    local -r flags=("-D" "$POSTGRESQL_DATA_DIR" "--source-server" "host=${REPMGR_CURRENT_PRIMARY_HOST} port=${REPMGR_CURRENT_PRIMARY_PORT} user=${REPMGR_USERNAME} dbname=${REPMGR_DATABASE}")
+
+    if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
+        PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${POSTGRESQL_BIN_DIR}/pg_rewind" "${flags[@]}"
+    else
+        PGPASSWORD="$REPMGR_PASSWORD" debug_execute "${POSTGRESQL_BIN_DIR}/pg_rewind" "${flags[@]}"
+    fi
 }
 
 ########################
@@ -611,10 +632,17 @@ repmgr_clone_primary() {
 #   None
 #########################
 repmgr_rewind() {
-    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
-      info "Rejoining node..."
-      debug "Cloning data from primary node with force flag..."
-      repmgr_clone_primary
+    info "Rejoining node..."
+
+    ensure_dir_exists "$POSTGRESQL_DATA_DIR"
+    if is_boolean_yes "$REPMGR_USE_PGREWIND"; then
+        info "Using pg_rewind to primary node..."
+        if ! repmgr_pgrewind; then
+            warn "pg_rewind failed, resorting to data cloning"
+            repmgr_clone_primary
+        fi
+    else
+        repmgr_clone_primary
     fi
 }
 
@@ -784,17 +812,14 @@ repmgr_initialize() {
         repmgr_wait_primary_node || exit 1
         # TODO: better way to detect it's a 1st boot
         if [[ ! -f "$POSTGRESQL_CONF_FILE" ]] || ! is_boolean_yes "$REPMGR_SWITCH_ROLE"; then
-            if [[ ! -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}" || -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
+            if [[ ! -f "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}" ]]; then
               repmgr_clone_primary
             fi
         else
+          if is_boolean_yes "$REPMGR_USE_PGREWIND"; then
             repmgr_rewind || exit $?
+          fi
         fi
-    fi
-
-    if [[ -f "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}" ]]; then
-      warn "File ${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME} still exists, so we delete it for the safety reason."
-      rm "${POSTGRESQL_DATA_DIR}/${FORCE_UNSAFE_CLONE_FILENAME}"
     fi
 
     postgresql_initialize
@@ -819,7 +844,7 @@ repmgr_initialize() {
             postgresql_start_bg
             repmgr_register_witness
             date --rfc-3339=ns > "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME"
-    fi
+      fi
     elif [[ "$REPMGR_ROLE" = "primary" ]]; then
         if is_boolean_yes "$POSTGRESQL_FIRST_BOOT"; then
             postgresql_start_bg
@@ -838,7 +863,6 @@ repmgr_initialize() {
         else
             debug "Skipping repmgr configuration..."
         fi
-        date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
     else
         local -r psql_major_version="$(postgresql_get_major_version)"
 
