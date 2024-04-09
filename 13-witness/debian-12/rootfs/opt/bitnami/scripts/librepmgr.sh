@@ -560,45 +560,6 @@ EOF
 }
 
 ########################
-# Waits until the node responds
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   name
-#   host
-#   port
-# Returns:
-#   None
-#########################
-repmgr_wait_node() {
-    local -r name="$1"
-    local -r host="$2"
-    local -r port="$3"
-    local return_value=1
-    local -i timeout=60
-    local -i step=10
-    local -i max_tries=$((timeout / step))
-    local schemata
-    info "Waiting for $name node..."
-    debug "Wait for schema $REPMGR_DATABASE.repmgr on '${host}:${port}', will try $max_tries times with $step delay seconds (TIMEOUT=$timeout)"
-    for ((i = 0; i <= timeout; i += step)); do
-        local query="SELECT 1 FROM information_schema.schemata WHERE catalog_name='$REPMGR_DATABASE' AND schema_name='repmgr'"
-        if ! schemata="$(echo "$query" | NO_ERRORS=true postgresql_remote_execute "$host" "$port" "$REPMGR_DATABASE" "$REPMGR_USERNAME" "$REPMGR_PASSWORD" "-tA")"; then
-            debug "Host '${host}:${port}' is not accessible"
-        else
-            if [[ $schemata -ne 1 ]]; then
-                debug "Schema $REPMGR_DATABASE.repmgr is still not accessible"
-            else
-                debug "Schema $REPMGR_DATABASE.repmgr exists!"
-                return_value=0 && break
-            fi
-        fi
-        sleep "$step"
-    done
-    return $return_value
-}
-
-########################
 # Waits until the primary node responds
 # Globals:
 #   REPMGR_*
@@ -608,21 +569,7 @@ repmgr_wait_node() {
 #   None
 #########################
 repmgr_wait_primary_node() {
-    repmgr_wait_node "primary" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT"
-    return $?
-}
-
-########################
-# Waits until the witness node responds
-# Globals:
-#   REPMGR_*
-# Arguments:
-#   None
-# Returns:
-#   None
-#########################
-repmgr_wait_witness_node() {
-    repmgr_wait_node "witness" "$REPMGR_WITNESS_NODE" "$REPMGR_WITNESS_PORT"
+    cd_repmgr_wait_node "primary" "$REPMGR_CURRENT_PRIMARY_HOST" "$REPMGR_CURRENT_PRIMARY_PORT"
     return $?
 }
 
@@ -819,11 +766,12 @@ repmgr_initialize() {
 
     debug "Node ID: '$(repmgr_get_node_id)', Repmgr_role: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
+
     if [[ "$REPMGR_NODE_TYPE" != "witness" ]]; then
         if ! node_is_the_same_like_repmgr_primary_variable ||
               ! is_dir_empty "$POSTGRESQL_DATA_DIR" &&
               [[ ! -f "$POSTGRESQL_DATA_DIR/$FORCE_RUN_PRIMARY_WITHOUT_WITNESS_FILENAME" ]]; then
-          repmgr_wait_witness_node || exit 1
+          cd_repmgr_wait_witness_node || exit 1
         else
           debug "Skipping waiting on witness"
         fi
