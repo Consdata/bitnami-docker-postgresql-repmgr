@@ -783,15 +783,6 @@ repmgr_upgrade_extension() {
 #   None
 #########################
 repmgr_initialize() {
-    # Set the environment variables for the node's role
-    eval "$(repmgr_set_role)"
-
-    # Configure postgres
-    export POSTGRESQL_MASTER_HOST="$REPMGR_CURRENT_PRIMARY_HOST"
-    export POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
-    export POSTGRESQL_REPLICATION_USER="$REPMGR_USERNAME"
-    export POSTGRESQL_REPLICATION_PASSWORD="$REPMGR_PASSWORD"
-
     debug "Node ID: '$(repmgr_get_node_id)', Repmgr_role: '$REPMGR_ROLE', Primary Node: '${REPMGR_CURRENT_PRIMARY_HOST}:${REPMGR_CURRENT_PRIMARY_PORT}', Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
     info "Initializing Repmgr..."
 
@@ -823,16 +814,19 @@ repmgr_initialize() {
     fi
 
     postgresql_initialize
-    # Allow remote connections, required to register primary and standby nodes
-    postgresql_enable_remote_connections
-    # Configure port and restrict access to PostgreSQL (MD5)
-    postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 
-    #postgresql_configure_replication_parameters
-    #postgresql_configure_fsync
+    if ! repmgr_is_file_external "postgresql.conf"; then
+        # Allow remote connections, required to register primary and standby nodes
+        postgresql_enable_remote_connections
+        # Configure port and restrict access to PostgreSQL (MD5)
+        postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 
-    is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
-    debug "Repmgr Node Type: '${REPMGR_NODE_TYPE}'"
+        postgresql_configure_replication_parameters
+        postgresql_configure_fsync
+    fi
+    if ! repmgr_is_file_external "pg_hba.conf"; then
+        is_boolean_yes "$REPMGR_PGHBA_TRUST_ALL" || postgresql_restrict_pghba
+    fi
     if [[ "$REPMGR_NODE_TYPE" = "witness" ]]; then
       if [[ ! -f "$POSTGRESQL_DATA_DIR/$WITNESS_ALREADY_STARTED_FILENAME" ]]; then
             repmgr_wait_primary_node || exit 1
@@ -864,7 +858,7 @@ repmgr_initialize() {
             debug "Skipping repmgr configuration..."
         fi
         date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
-    else
+    elif [[ "$REPMGR_ROLE" = "standby" ]]; then
         local -r psql_major_version="$(postgresql_get_major_version)"
 
         POSTGRESQL_MASTER_PORT_NUMBER="$REPMGR_CURRENT_PRIMARY_PORT"
