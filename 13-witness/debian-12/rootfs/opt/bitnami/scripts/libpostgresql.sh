@@ -587,6 +587,10 @@ postgresql_clean_from_restart() {
 postgresql_initialize() {
     info "Initializing PostgreSQL database..."
 
+    # brak czysczenia, powoduje blad pg_ctl "pg_ctl: another server might be running; trying to start server anyway"
+    # przy odpalaniu postgresa z run.sh (po setup.sh)
+    postgresql_clean_from_restart
+
     # This fixes an issue where the trap would kill the entrypoint.sh, if a PID was left over from a previous run
     # Exec replaces the process without creating a new one, and when the container is restarted it may have the same PID
     rm -f "$POSTGRESQL_PID_FILE"
