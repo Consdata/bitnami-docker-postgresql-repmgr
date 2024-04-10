@@ -863,6 +863,7 @@ repmgr_initialize() {
         else
             debug "Skipping repmgr configuration..."
         fi
+        date --rfc-3339=ns > "${POSTGRESQL_DATA_DIR}/${STANDBY_ALREADY_CLONED_FILENAME}"
     else
         local -r psql_major_version="$(postgresql_get_major_version)"
 
