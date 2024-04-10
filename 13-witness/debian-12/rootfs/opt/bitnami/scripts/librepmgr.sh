@@ -265,6 +265,8 @@ repmgr_set_role() {
           primary_host="${REPMGR_PRIMARY_HOST}"
           primary_port="${REPMGR_PRIMARY_PORT}"
       fi
+      # CD FIX
+      # primary_node zawsze jest ustawione, jeżeli primary z witness/konfiguracji odpowiada obecnemu node'owi to ten node jest primary
       if [[ "$primary_host" = "$REPMGR_NODE_NETWORK_NAME" && "$primary_port" = "$REPMGR_PORT_NUMBER" ]]; then
           info "Node configured as primary"
           role="primary"
@@ -813,6 +815,8 @@ repmgr_initialize() {
               repmgr_clone_primary
             fi
         else
+          # CD FIX
+          # uruchomienie rewind/clonowania tylko gdy jest zmienna (nie chcemy tego za każdym razem odpalać)
           if is_boolean_yes "$REPMGR_USE_PGREWIND"; then
             repmgr_rewind || exit $?
           fi

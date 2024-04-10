@@ -587,6 +587,7 @@ postgresql_clean_from_restart() {
 postgresql_initialize() {
     info "Initializing PostgreSQL database..."
 
+    # CD FIX
     # brak czysczenia, powoduje blad pg_ctl "pg_ctl: another server might be running; trying to start server anyway"
     # przy odpalaniu postgresa z run.sh (po setup.sh)
     postgresql_clean_from_restart
