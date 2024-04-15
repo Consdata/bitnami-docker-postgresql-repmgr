@@ -4,7 +4,7 @@
 version: '2'
 services:
   pg-0:
-    image: consdata/bitnami-postgresql-repmgr:13-witness
+    build: .
     ports:
       - 5432:5432
     volumes:
@@ -19,13 +19,14 @@ services:
       - REPMGR_PRIMARY_PORT=5432
       - REPMGR_WITNESS_NODE=pg-witness
       - REPMGR_WITNESS_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-witness:5432,pg-1:5432
       - REPMGR_NODE_NAME=pg-0
       - REPMGR_NODE_NETWORK_NAME=pg-0
       - REPMGR_PORT_NUMBER=5432
       - BITNAMI_DEBUG=true
       - REPMGR_LOG_LEVEL=DEBUG
   pg-1:
-    image: consdata/bitnami-postgresql-repmgr:13-witness
+    build: .
     ports:
       - 5433:5432
     volumes:
@@ -40,13 +41,14 @@ services:
       - REPMGR_PRIMARY_PORT=5432
       - REPMGR_WITNESS_NODE=pg-witness
       - REPMGR_WITNESS_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-witness:5432,pg-0:5432
       - REPMGR_NODE_NAME=pg-1
       - REPMGR_NODE_NETWORK_NAME=pg-1
       - REPMGR_PORT_NUMBER=5432
       - BITNAMI_DEBUG=true
       - REPMGR_LOG_LEVEL=DEBUG
   pg-witness:
-    image: consdata/bitnami-postgresql-repmgr:13-witness
+    build: .
     ports:
       - 5439:5432
     volumes:
