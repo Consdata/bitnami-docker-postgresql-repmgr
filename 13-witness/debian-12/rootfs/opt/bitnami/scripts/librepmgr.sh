@@ -836,9 +836,12 @@ repmgr_initialize() {
 
     postgresql_initialize
 
+    # CD FIX
+    # akcept polaczen dopiero po 1 setupowym odpaleniu postgresa
+    # Allow remote connections, required to register primary and standby nodes
+    postgresql_enable_remote_connections
+
     if ! repmgr_is_file_external "postgresql.conf"; then
-        # Allow remote connections, required to register primary and standby nodes
-        postgresql_enable_remote_connections
         # Configure port and restrict access to PostgreSQL (MD5)
         postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 
